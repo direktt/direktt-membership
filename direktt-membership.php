@@ -35,35 +35,56 @@ add_action( 'save_post', 'save_direktt_membership_package_meta' );
 // Membership Profile Tool Setup
 add_action( 'direktt_setup_profile_tools', 'direktt_membership_setup_profile_tool' );
 
+// Assign Membership Package AJAX Handler
+add_action( 'wp_ajax_direktt_assign_membership_package', 'handle_direktt_assign_membership_package' );
+
+// Activate Membership AJAX Handler
+add_action( 'wp_ajax_direktt_activate_membership', 'handle_direktt_activate_membership' );
+
+// Invalidate Membership AJAX Handler
+add_action( 'wp_ajax_direktt_invalidate_membership', 'handle_direktt_invalidate_membership' );
+
+// Record Membership Usage AJAX Handler
+add_action( 'wp_ajax_direktt_record_membership_usage', 'handle_direktt_record_membership_usage' );
+
 function direktt_membership_activation_check() {
-	if ( ! function_exists( 'is_plugin_active' ) ) {
-		require_once ABSPATH . 'wp-admin/includes/plugin.php';
-	}
+	if (! function_exists('is_plugin_active')) {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    }
 
-	$required_plugin = 'direktt-plugin/direktt.php';
+    $required_plugin = 'direktt/direktt.php';
+    $is_required_active = is_plugin_active($required_plugin)
+        || (is_multisite() && is_plugin_active_for_network($required_plugin));
 
-	if ( ! is_plugin_active( $required_plugin ) ) {
+    if (! $is_required_active) {
+        // Deactivate this plugin
+        deactivate_plugins(plugin_basename(__FILE__));
 
-		add_action(
-			'after_plugin_row_direktt-membership/direktt-membership.php',
-			function ( $plugin_file, $plugin_data, $status ) {
-				$colspan = 3;
-				?>
-			<tr class="plugin-update-tr">
-				<td colspan="<?php echo esc_attr( $colspan ); ?>" style="box-shadow: none;">
-					<div style="color: #b32d2e; font-weight: bold;">
-						<?php esc_html_e( 'Direktt Membership requires the Direktt WordPress Plugin to be active. Please activate Direktt WordPress Plugin first.', 'direktt-membership' ); ?>
-					</div>
-				</td>
-			</tr>
-				<?php
-			},
-			10,
-			3
-		);
+        // Prevent the “Plugin activated.” notice
+        if (isset($_GET['activate'])) {
+            unset($_GET['activate']);
+        }
 
-		deactivate_plugins( plugin_basename( __FILE__ ) );
-	}
+        // Show an error notice for this request
+        add_action('admin_notices', function () {
+            echo '<div class="notice notice-error is-dismissible"><p>'
+                . esc_html__( 'Direktt Membership activation failed: The Direktt WordPress Plugin must be active first.', 'direktt-membership' )
+                . '</p></div>';
+        });
+
+        // Optionally also show the inline row message in the plugins list
+        add_action(
+            'after_plugin_row_direktt-cross-sell/direktt-cross-sell.php',
+            function () {
+                echo '<tr class="plugin-update-tr"><td colspan="3" style="box-shadow:none;">'
+                    . '<div style="color:#b32d2e;font-weight:bold;">'
+                    . esc_html__( 'Direktt Membership requires the Direktt WordPress Plugin to be active. Please activate it first.', 'direktt-membership' )
+                    . '</div></td></tr>';
+            },
+            10,
+            0
+        );
+    }
 }
 
 function direktt_membership_create_issued_database_table() {
@@ -77,6 +98,7 @@ function direktt_membership_create_issued_database_table() {
 	$sql = "CREATE TABLE $table_name (
   			ID bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             membership_package_id varchar(256) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
+			direktt_assigner_user_id varchar(256) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
             direktt_receiver_user_id varchar(256) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
             issue_time timestamp NOT NULL,
             activation_time timestamp DEFAULT NULL,
@@ -86,6 +108,7 @@ function direktt_membership_create_issued_database_table() {
             valid boolean DEFAULT TRUE,
   			PRIMARY KEY (ID),
   			KEY membership_package_id (membership_package_id),
+			KEY direktt_assigner_user_id (direktt_assigner_user_id),
             KEY direktt_receiver_user_id (direktt_receiver_user_id),
             KEY issue_time (issue_time),
             KEY membership_guid (membership_guid)
@@ -747,6 +770,13 @@ function direktt_membership_setup_profile_tool() {
 }
 
 function direktt_membership_render_profile_tool() {
+	if ( isset( $_GET['success_flag'] ) && $_GET['success_flag'] === '1' ) {
+		echo '<div class="notice"><p>' . esc_html__( 'Membership package assigned successfully.', 'direktt-membership' ) . '</p></div>';
+	}
+	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) {
+		direktt_membership_render_view_details( sanitize_text_field( $_GET['id'] ) );
+		return;
+	}
 	direktt_membership_render_assign_membership_packages();
 	direktt_membership_render_membership_packages();
 }
@@ -772,11 +802,185 @@ function direktt_membership_render_membership_packages() {
 		</div>
 
 		<div id="direktt-membership-packages-all">
-			<p><?php echo esc_html__( 'Displaying all memberships...', 'direktt-membership' ); ?></p>
+			<?php
+			$all_memberships = direktt_get_all_user_memberships( sanitize_text_field( $_GET['subscriptionId'] ) );
+			if ( empty( $all_memberships ) ) {
+				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
+			} else {
+				?>
+				<table>
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php
+						foreach( $all_memberships as $membership ) {
+							$package_id   = intval( $membership['id'] );
+							$package_name = esc_html( get_the_title( $package_id ) );
+							$type         = get_post_meta( $package_id, 'direktt_membership_package_type', true );
+							$max_usage    = get_post_meta( $package_id, 'direktt_membership_package_max_usage', true );
+
+							if ( ! $max_usage ) {
+								$max_usage = 0;
+							}
+
+							$used_count  = direktt_membership_get_used_count( $membership['issued_id'] );
+							$usages_left = $max_usage === 0 ? esc_html__( 'Unlimited', 'direktt-membership' ) : max( 0, $max_usage - $used_count ); 
+
+							$profile_user = Direktt_User::get_user_by_subscription_id( $membership['assigner_user_id'] );
+							?>
+							<tr>
+								<td><?php echo esc_html( $package_name ); ?></td>
+								<td><?php echo esc_html( $profile_user['direktt_display_name'] ); ?><br><?php echo esc_html( $membership['assigner_user_id'] ); ?></td>
+								<td><?php echo $membership['activated'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+								<td><?php echo esc_html( human_time_diff( strtotime( $membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+								<td>
+									<?php
+									if ( $membership['activation_time'] ) {
+										$activation_time = strtotime( $membership['activation_time'] );
+										$current_time = strtotime( current_time( 'mysql' ) );
+										echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+									} else {
+										echo esc_html( '/' );
+									}
+									?>
+								</td>
+								<td>
+									<?php
+									if ( $membership['expiry_time'] ) {
+										$expiry_time = strtotime( $membership['expiry_time'] );
+										$current_time = strtotime( current_time( 'mysql' ) );
+
+										if ( $expiry_time > $current_time ) {
+											echo esc_html__( 'in ', 'direktt-membership' ) . esc_html( human_time_diff( $current_time, $expiry_time ) );
+										} else {
+											echo esc_html__( 'expired ', 'direktt-membership' ) . esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+										}
+									} else {
+										echo esc_html( '/' );
+									}
+									?>
+								</td>
+								<td><?php echo $type === '1' ? esc_html( $usages_left ) : esc_html( '/' ); ?></td>
+								<td><?php echo $membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+							</tr>
+							<tr>
+								<td colspan="8">
+									<?php
+									$redirect_url = remove_query_arg( array( 'success_flag' ) );
+									$redirect_url = add_query_arg( array( 'action' => 'view_details', 'id' => $membership['issued_id'] ), $redirect_url );
+									?>
+									<a href="<?php echo esc_url( $redirect_url ); ?>" class="button"><?php echo esc_html__( 'View Details', 'direktt-membership' ); ?></a>
+								</td>
+							</tr>
+							<?php
+						}
+						?>
+					</tbody>
+				</table>
+				<?php
+			}
+			?>
 		</div>
 
 		<div id="direktt-membership-packages-active" style="display: none;">
-			<p><?php echo esc_html__( 'Displaying active memberships...', 'direktt-membership' ); ?></p>
+			<?php
+			$active_memberships = direktt_get_active_user_memberships( sanitize_text_field( $_GET['subscriptionId'] ) );
+			if ( empty( $active_memberships ) ) {
+				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
+			} else {
+				?>
+				<table>
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php
+						foreach( $active_memberships as $active_membership ) {
+							$package_id   = intval( $active_membership['id'] );
+							$package_name = esc_html( get_the_title( $package_id ) );
+							$type         = get_post_meta( $package_id, 'direktt_membership_package_type', true );
+							$max_usage    = get_post_meta( $package_id, 'direktt_membership_package_max_usage', true );
+
+							if ( ! $max_usage ) {
+								$max_usage = 0;
+							}
+
+							$used_count  = direktt_membership_get_used_count( $active_membership['issued_id'] );
+							$usages_left = $max_usage === 0 ? esc_html__( 'Unlimited', 'direktt-membership' ) : max( 0, $max_usage - $used_count ); 
+
+							$profile_user = Direktt_User::get_user_by_subscription_id( $active_membership['assigner_user_id'] );
+							?>
+							<tr>
+								<td><?php echo esc_html( $package_name ); ?></td>
+								<td><?php echo esc_html( $profile_user['direktt_display_name'] ); ?><br><?php echo esc_html( $active_membership['assigner_user_id'] ); ?></td>
+								<td><?php echo $active_membership['activated'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+								<td><?php echo esc_html( human_time_diff( strtotime( $active_membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+								<td>
+									<?php
+									if ( $membership['activation_time'] ) {
+										$activation_time = strtotime( $membership['activation_time'] );
+										$current_time = strtotime( current_time( 'mysql' ) );
+										echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+									} else {
+										echo esc_html( '/' );
+									}
+									?>
+								</td>
+								<td>
+									<?php
+									if ( $active_membership['expiry_time'] ) {
+										$expiry_time = strtotime( $active_membership['expiry_time'] );
+										$current_time = strtotime( current_time( 'mysql' ) );
+
+										if ( $expiry_time > $current_time ) {
+											echo esc_html__( 'in ', 'direktt-membership' ) . esc_html( human_time_diff( $current_time, $expiry_time ) );
+										} else {
+											echo esc_html__( 'expired ', 'direktt-membership' ) . esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+										}
+									} else {
+										echo esc_html( '/' );
+									}
+									?>
+								</td>
+								<td><?php echo $type === '1' ? esc_html( $usages_left ) : esc_html( '/' ); ?></td>
+								<td><?php echo $active_membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+							</tr>
+							<tr>
+								<td colspan="8">
+									<?php
+									$redirect_url = remove_query_arg( array( 'success_flag' ) );
+									$redirect_url = add_query_arg( array( 'action' => 'view_details', 'id' => $active_membership['issued_id'] ), $redirect_url );
+									?>
+									<a href="<?php echo esc_url( $redirect_url ); ?>" class="button"><?php echo esc_html__( 'View Details', 'direktt-membership' ); ?></a>
+								</td>
+							</tr>
+							<?php
+						}
+						?>
+					</tbody>
+				</table>
+				<?php
+			}
+			?>
 		</div>
 
 		<script>
@@ -813,6 +1017,10 @@ function direktt_membership_render_assign_membership_packages() {
 
 	$membership_packages = get_posts( $args );
 
+	global $direktt_user;
+	$subscription_id = $direktt_user['direktt_user_id'];
+	$reciever_id     = sanitize_text_field( $_GET['subscriptionId'] );
+
 	echo '<div id="direktt-assign-membership-packages-wrapper">';
 	echo '<h3>' . esc_html__( 'Assign Membership Packages', 'direktt-membership' ) . '</h3>';
 	if ( empty( $membership_packages ) ) {
@@ -848,8 +1056,8 @@ function direktt_membership_render_assign_membership_packages() {
 			echo '<tr>';
 				echo '<td class="direktt-membership-package-name"><strong>' . $package_name . '</strong></td>';
 				echo '<td class="direktt-membership-package-type">' . ( $type === '0' ? esc_html__( 'Time Based', 'direktt-membership' ) : esc_html__( 'Usage Based', 'direktt-membership' ) ) . '</td>';
-				echo '<td class="direktt-membership-package-validity">' . ( $type === '0' ? esc_html( $validity ) . esc_html__( ' days', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
-				echo '<td class="direktt-membership-package-max-usage">' . ( $type === '1' ? esc_html( $max_usage ) . esc_html__( ' usages', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
+				echo '<td class="direktt-membership-package-validity">' . ( $type === '0' ? esc_html( $validity ) . esc_html__( ' day(s)', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
+				echo '<td class="direktt-membership-package-max-usage">' . ( $type === '1' ? esc_html( $max_usage ) . esc_html__( ' usage(s)', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
 			echo '</tr>';
 			echo '<tr class="direktt-membership-actions">';
 				echo '<td colspan="4">';
@@ -859,6 +1067,9 @@ function direktt_membership_render_assign_membership_packages() {
 		}
 		echo '</tbody></table>';
 		echo Direktt_Public::direktt_render_confirm_popup( 'direktt-assign-membership-package-confirm', __( 'Are you sure you want to assign this membership package?', 'direktt-membership' ) );
+		echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-alert', '' );
+		echo Direktt_Public::direktt_render_loader( __( 'Don\'t refresh the page.', 'direktt-membership' ) );
+		wp_nonce_field( 'direktt_assign_membership_package_nonce', 'direktt_assign_membership_package_nonce_field' );
 		?>
 		<script>
 			jQuery( document ).ready( function($) {
@@ -868,20 +1079,778 @@ function direktt_membership_render_assign_membership_packages() {
 					var packageName = $( this ).closest( 'tr' ).prev( 'tr' ).find( '.direktt-membership-package-name strong' ).text();
 					$( '#direktt-assign-membership-package-confirm .direktt-popup-text' ).text( "<?php echo esc_js( __( 'Are you sure you want to assign the membership package:', 'direktt-membership' ) ); ?> " + packageName + "<?php echo esc_html( '?' ); ?>" );
 					$( '#direktt-assign-membership-package-confirm' ).addClass( 'direktt-popup-on' );
+					$( '#direktt-assign-membership-package-confirm .direktt-popup-yes' ).data( 'package-id', packageId );
 				});
 
 				$( '#direktt-assign-membership-package-confirm .direktt-popup-yes' ).off( 'click' ).on( 'click', function( event ) {
 					event.preventDefault();
-					// confirm
+					var packageId = $( this ).data( 'package-id' );
+					$( '#direktt-assign-membership-package-confirm' ).removeClass( 'direktt-popup-on' );
+					$.ajax({
+						url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+						method: 'POST',
+						data: {
+							action: 'direktt_assign_membership_package',
+							package_id: packageId,
+							assigner_id: '<?php echo esc_js( $subscription_id ); ?>',
+							reciever_id: '<?php echo esc_js( $reciever_id ); ?>',
+							nonce: $( '#direktt_assign_membership_package_nonce_field' ).val()
+						},
+						success: function( response ) {
+							if ( response.success ) {
+								window.location.href = '<?php echo add_query_arg( 'success_flag', '1' ); ?>';
+							} else {
+								$( '#direktt-membership-alert' ).addClass( 'direktt-popup-on' );
+								$( '#direktt-membership-alert .direktt-popup-text' ).text( response.data );
+							}
+						},
+						error: function() {
+							$( '#direktt-membership-alert' ).addClass( 'direktt-popup-on' );
+							$( '#direktt-membership-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error assigning the membership package.', 'direktt-membership' ) ); ?>" );
+						}
+					});
 				});
 
 				$( '#direktt-assign-membership-package-confirm .direktt-popup-no' ).off( 'click' ).on( 'click', function( event ) {
 					event.preventDefault();
 					$( '#direktt-assign-membership-package-confirm' ).removeClass( 'direktt-popup-on' );
 				});
+
+				$( '#direktt-membership-alert .direktt-popup-ok' ).off( 'click' ).on( 'click', function( event ) {
+					event.preventDefault();
+					$( '#direktt-membership-alert' ).removeClass( 'direktt-popup-on' );
+				});
 			});
 		</script>
 		<?php
 	}
 	echo '</div>';
+}
+
+function handle_direktt_assign_membership_package() {
+	if ( isset( $_POST['nonce'], $_POST['package_id'], $_POST['assigner_id'] ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_assign_membership_package_nonce' ) ) {
+			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'direktt_membership_issued';
+
+		$package_id  = intval( wp_unslash( $_POST['package_id'] ) );
+		$assigner_id = sanitize_text_field( wp_unslash( $_POST['assigner_id'] ) );
+		$reciever_id = sanitize_text_field( wp_unslash( $_POST['reciever_id'] ) );
+
+		$membership_package = get_post( $package_id );
+		if ( ! $membership_package || $membership_package->post_status !== 'publish' ) {
+			wp_send_json_error( esc_html__( 'Invalid membership package.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		$type      = get_post_meta( $package_id, 'direktt_membership_package_type', true );
+		$activated = $type === '1' ? 1 : 0;
+		$guid      = wp_generate_uuid4();
+
+		$inserted = $wpdb->insert(
+			$table,
+			array(
+				'membership_package_id'    => (string) $package_id,
+				'direktt_assigner_user_id' => $assigner_id,
+				'direktt_receiver_user_id' => $reciever_id,
+				'membership_guid'          => $guid,
+				'activated'                => $activated,
+			),
+			array(
+				'%s',
+				'%s',
+				'%s',
+				'%s',
+				'%d',
+			)
+		);
+
+		if ( $inserted ) {
+			$membership_user_issuance           = get_option( 'direktt_membership_user_issuance', 'no' ) === 'yes';
+			$membership_user_issuance_template  = intval( get_option( 'direktt_membership_user_issuance_template', 0 ) );
+			$membership_admin_issuance          = get_option( 'direktt_membership_admin_issuance', 'no' ) === 'yes';
+			$membership_admin_issuance_template = intval( get_option( 'direktt_membership_admin_issuance_template', 0 ) );
+
+			if ( $membership_user_issuance && $membership_user_issuance_template !== 0 ) {
+				Direktt_Message::send_message_template(
+                    array( $reciever_id ),
+                    $membership_user_issuance_template,
+					array()
+                );
+			}
+
+			if ( $membership_admin_issuance && $membership_admin_issuance_template !== 0 ) {
+				Direktt_Message::send_message_template_to_admin(
+                    $membership_admin_issuance_template,
+                    array()
+                );
+			}
+
+			wp_send_json_success();
+			wp_die();
+		} else {
+			wp_send_json_error( esc_html__( 'Failed to assign membership package.', 'direktt-membership' ) );
+			wp_die();
+		}
+	} else {
+		wp_send_json_error( esc_html__( 'Invalid request.', 'direktt-membership' ) );
+		wp_die();
+	}
+}
+
+function direktt_get_all_user_memberships( $subscription_id ) {
+	global $wpdb;
+	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+
+	$memberships = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT * FROM $issued_table 
+			WHERE direktt_receiver_user_id = %s 
+			ORDER BY valid DESC, activated DESC",
+			$subscription_id
+		)
+	);
+
+	$membership_data = array();
+
+	if ( empty( $memberships ) ) {
+		return $membership_data;
+	}
+
+	foreach ( $memberships as $membership ) {
+		$membership_data[] = array(
+			'issued_id'        => intval( $membership->ID ),
+			'id'               => intval( $membership->membership_package_id ),
+			'assigner_user_id' => esc_html( $membership->direktt_assigner_user_id ),
+			'issue_time'       => esc_html( $membership->issue_time ),
+			'activation_time'  => esc_html( $membership->activation_time ),
+			'expiry_time'      => esc_html( $membership->expiry_time ),
+			'activated'        => intval( $membership->activated ),
+			'valid'            => intval( $membership->valid ),
+		);
+	}
+
+	return $membership_data;
+}
+
+function direktt_get_active_user_memberships( $subscription_id ) {
+	global $wpdb;
+	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+
+	$memberships = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT * FROM $issued_table WHERE direktt_receiver_user_id = %s AND activated = 1 AND valid = 1 ORDER BY activated DESC",
+			$subscription_id
+		)
+	);
+
+	$membership_data = array();
+
+	if ( empty( $memberships ) ) {
+		return $membership_data;
+	}
+
+	foreach ( $memberships as $membership ) {
+		$membership_data[] = array(
+			'issued_id'        => intval( $membership->ID ),
+			'id'               => intval( $membership->membership_package_id ),
+			'assigner_user_id' => esc_html( $membership->direktt_assigner_user_id ),
+			'issue_time'       => esc_html( $membership->issue_time ),
+			'activation_time'  => esc_html( $membership->activation_time ),
+			'expiry_time'      => esc_html( $membership->expiry_time ),
+			'activated'        => intval( $membership->activated ),
+			'valid'            => intval( $membership->valid ),
+		);
+	}
+
+	return $membership_data;
+}
+
+function direktt_membership_render_view_details( $id ) {
+	global $wpdb;
+	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+
+	global $direktt_user;
+	$subscription_id = $direktt_user['direktt_user_id'];
+
+	$membership = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT * FROM $issued_table WHERE ID = %d",
+			intval( $id )
+		)
+	);
+
+	if ( ! $membership ) {
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'Membership not found.', 'direktt-membership' ) . '</p></div>';
+	} else {
+		if ( isset( $_GET['success_flag_activate'] ) ) {
+			$success_flag_activate = sanitize_text_field( wp_unslash( $_GET['success_flag_activate'] ) );
+			if ( $success_flag_activate === '1' ) {
+				echo '<div class="notice"><p>' . esc_html__( 'Membership activated successfully.', 'direktt-membership' ) . '</p></div>';
+			}
+		}
+		if ( isset( $_GET['success_flag_invalidate'] ) ) {
+			$success_flag_invalidate = sanitize_text_field( wp_unslash( $_GET['success_flag_invalidate'] ) );
+			if ( $success_flag_invalidate === '1' ) {
+				echo '<div class="notice"><p>' . esc_html__( 'Membership invalidated successfully.', 'direktt-membership' ) . '</p></div>';
+			}
+		}
+		$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
+		if ( $type === '0' ) {
+			?>
+			<table>
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
+						<td>
+							<?php
+							$profile_user = Direktt_User::get_user_by_subscription_id( $membership->direktt_assigner_user_id );
+							echo esc_html( $profile_user['direktt_display_name'] ) . '<br>' . esc_html( $membership->direktt_assigner_user_id );
+							?>
+						</td>
+						<td><?php echo $membership->activated ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+						<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+						<td>
+							<?php
+							if ( $membership->activation_time ) {
+								$activation_time = strtotime( $membership->activation_time );
+								$current_time = strtotime( current_time( 'mysql' ) );
+								echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+							} else {
+								echo esc_html( '/' );
+							}
+							?>
+						</td>
+						<td>
+							<?php
+							if ( $membership->expiry_time ) {
+								$expiry_time  = strtotime( $membership->expiry_time );
+								$current_time = strtotime( current_time( 'mysql' ) );
+
+								if ( $expiry_time > $current_time ) {
+									echo esc_html__( 'in ', 'direktt-membership' ) . esc_html( human_time_diff( $current_time, $expiry_time ) );
+								} else {
+									echo esc_html__( 'expired ', 'direktt-membership' ) . esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+								}
+							} else {
+								echo esc_html( '/' );
+							}
+							?>
+						</td>
+						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+					</tr>
+					<tr>
+						<td colspan="7">
+							<?php
+							if ( ! $membership->valid ) {
+								?>
+								<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
+								<?php
+							} else {
+								if ( ! $membership->activated ) {
+									?>
+									<button class="button" id="direktt-membership-activate"><?php echo esc_html__( 'Activate Membership', 'direktt-membership' ); ?> </button>
+									<?php
+									echo Direktt_Public::direktt_render_loader( __( 'Activating membership, please wait...', 'direktt-membership' ) );
+									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-activate-confirm', __( 'Are you sure you want to activate this membership?', 'direktt-membership' ) );
+									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-activate-alert', '' );
+									?>
+									<script>
+									jQuery( document ).ready( function($) {
+										$( '#direktt-membership-activate' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-activate-confirm' ).addClass( 'direktt-popup-on' );
+										});
+
+										$( '#direktt-membership-activate-confirm .direktt-popup-yes' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '.direktt-loader-overlay' ).fadeIn();
+											$( '#direktt-membership-activate-confirm' ).removeClass( 'direktt-popup-on' );
+											$.ajax({
+												url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+												method: 'POST',
+												data: {
+													action: 'direktt_activate_membership',
+													issued_id: '<?php echo esc_js( intval( $membership->ID ) ); ?>',
+													nonce: '<?php echo esc_js( wp_create_nonce( 'direktt_activate_membership_nonce' ) ); ?>'
+												},
+												success: function( response ) {
+													if ( response.success ) {
+														<?php
+														$redirect_url = add_query_arg( 'success_flag_activate', '1' );
+														?>
+														window.location.href = '<?php echo $redirect_url; ?>';
+													} else {
+														$( '#direktt-membership-activate-alert' ).addClass( 'direktt-popup-on' );
+														$( '#direktt-membership-activate-alert .direktt-popup-text' ).text( response.data );
+														$( '.direktt-loader-overlay' ).fadeOut();
+													}
+												},
+												error: function() {
+													$( '#direktt-membership-activate-alert' ).addClass( 'direktt-popup-on' );
+													$( '#direktt-membership-activate-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error activating the membership.', 'direktt-membership' ) ); ?>" );
+													$( '.direktt-loader-overlay' ).fadeOut();
+												}
+											});
+										});
+
+										$( '#direktt-membership-activate-confirm .direktt-popup-no' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-activate-confirm' ).removeClass( 'direktt-popup-on' );
+										});
+
+										$( '#direktt-membership-activate-alert .direktt-popup-ok' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-activate-alert' ).removeClass( 'direktt-popup-on' );
+										});
+									});
+									</script>
+									<?php
+								}
+								?>
+								<button class="button button-red button" id="direktt-membership-invalidate"><?php echo esc_html__( 'Invalidate Membership', 'direktt-membership' ); ?> </button>
+								<?php
+								echo Direktt_Public::direktt_render_loader( __( 'Invalidating membership, please wait...', 'direktt-membership' ) );
+								echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) );
+								echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' );
+								?>
+								<script>
+									jQuery( document ).ready( function($) {
+										$( '#direktt-membership-invalidate' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-invalidate-confirm' ).addClass( 'direktt-popup-on' );
+										});
+
+										$( '#direktt-membership-invalidate-confirm .direktt-popup-yes' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '.direktt-loader-overlay' ).fadeIn();
+											$( '#direktt-membership-invalidate-confirm' ).removeClass( 'direktt-popup-on' );
+											$.ajax({
+												url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+												method: 'POST',
+												data: {
+													action: 'direktt_invalidate_membership',
+													issued_id: '<?php echo esc_js( intval( $membership->ID ) ); ?>',
+													nonce: '<?php echo esc_js( wp_create_nonce( 'direktt_invalidate_membership_nonce' ) ); ?>'
+												},
+												success: function( response ) {
+													if ( response.success ) {
+														<?php
+														$redirect_url = remove_query_arg( array( 'success_flag_activate' ) );
+														$redirect_url = add_query_arg( array( 'success_flag_invalidate' => '1' ), $redirect_url );
+														?>
+														window.location.href = '<?php echo $redirect_url; ?>';
+													} else {
+														$( '#direktt-membership-invalidate-alert' ).addClass( 'direktt-popup-on' );
+														$( '#direktt-membership-invalidate-alert .direktt-popup-text' ).text( response.data );
+														$( '.direktt-loader-overlay' ).fadeOut();
+													}
+												},
+												error: function() {
+													$( '#direktt-membership-invalidate-alert' ).addClass( 'direktt-popup-on' );
+													$( '#direktt-membership-invalidate-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error invalidating the membership.', 'direktt-membership' ) ); ?>" );
+													$( '.direktt-loader-overlay' ).fadeOut();
+												}
+											});
+										});
+
+										$( '#direktt-membership-invalidate-confirm .direktt-popup-no' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-invalidate-confirm' ).removeClass( 'direktt-popup-on' );
+										});
+
+										$( '#direktt-membership-invalidate-alert .direktt-popup-ok' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-invalidate-alert' ).removeClass( 'direktt-popup-on' );
+										});
+									});
+								</script>
+								<?php
+							}
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<?php
+		} else {
+			?>
+			<table>
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
+						<td>
+							<?php
+							$profile_user = Direktt_User::get_user_by_subscription_id( $membership->direktt_assigner_user_id );
+							echo esc_html( $profile_user['direktt_display_name'] ) . '<br>' . esc_html( $membership->direktt_assigner_user_id );
+							?>
+						</td>
+						<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+						<td>
+							<?php
+							$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
+							if ( ! $max_usage ) {
+								$max_usage = 0;
+							}
+							if ( $max_usage === 0 ) {
+								echo esc_html__( 'Unlimited', 'direktt-membership' );
+							} else {
+								$max_usage = intval( $max_usage );
+								$used_count = direktt_membership_get_used_count( intval( $id ) );
+								$usages_left = $max_usage - $used_count;
+								echo esc_html( $usages_left );
+							}
+							?>
+						</td>
+						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+					</tr>
+					<tr>
+						<td colspan="7">
+							<?php
+							if ( ! $membership->valid ) {
+								?>
+								<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
+								<?php
+							} else {
+								if ( $usages_left > 0 || $max_usage === 0 ) {
+									?>
+									<button class="button" id="direktt-membership-record-usage"><?php echo esc_html__( 'Record Usage', 'direktt-membership' ); ?> </button>
+									<?php
+									echo Direktt_Public::direktt_render_loader( __( 'Recording usage, please wait...', 'direktt-membership' ) );
+									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-record-usage-confirm', __( 'Are you sure you want to record usage for this membership?', 'direktt-membership' ) );
+									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-record-usage-alert', '' );
+									?>
+									<script>
+									jQuery( document ).ready( function($) {
+										$( '#direktt-membership-record-usage' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-record-usage-confirm' ).addClass( 'direktt-popup-on' );
+										});
+
+										$( '#direktt-membership-record-usage-confirm .direktt-popup-yes' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '.direktt-loader-overlay' ).fadeIn();
+											$( '#direktt-membership-record-usage-confirm' ).removeClass( 'direktt-popup-on' );
+											$.ajax({
+												url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+												method: 'POST',
+												data: {
+													action: 'direktt_record_membership_usage',
+													issued_id: '<?php echo esc_js( intval( $membership->ID ) ); ?>',
+													subscription_id: '<?php echo esc_js( $subscription_id ); ?>',
+													nonce: '<?php echo esc_js( wp_create_nonce( 'direktt_record_membership_usage_nonce' ) ); ?>'
+												},
+												success: function( response ) {
+													if ( response.success ) {
+														<?php
+														$redirect_url = add_query_arg( 'success_flag_record_usage', '1' );
+														?>
+														window.location.href = '<?php echo $redirect_url; ?>';
+													} else {
+														$( '#direktt-membership-record-usage-alert' ).addClass( 'direktt-popup-on' );
+														$( '#direktt-membership-record-usage-alert .direktt-popup-text' ).text( response.data );
+														$( '.direktt-loader-overlay' ).fadeOut();
+													}
+												},
+												error: function() {
+													$( '#direktt-membership-record-usage-alert' ).addClass( 'direktt-popup-on' );
+													$( '#direktt-membership-record-usage-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error recording the usage.', 'direktt-membership' ) ); ?>" );
+													$( '.direktt-loader-overlay' ).fadeOut();
+												}
+											});
+										});
+
+										$( '#direktt-membership-record-usage-confirm .direktt-popup-no' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-record-usage-confirm' ).removeClass( 'direktt-popup-on' );
+										});
+
+										$( '#direktt-membership-record-usage-alert .direktt-popup-ok' ).off( 'click' ).on( 'click', function( event ) {
+											event.preventDefault();
+											$( '#direktt-membership-record-usage-alert' ).removeClass( 'direktt-popup-on' );
+										});
+									});
+									</script>
+									<button class="button button-red button" id="direktt-membership-invalidate"><?php echo esc_html__( 'Invalidate Membership', 'direktt-membership' ); ?> </button>
+									<?php
+									echo Direktt_Public::direktt_render_loader( __( 'Invalidating membership, please wait...', 'direktt-membership' ) );
+									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) );
+									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' );
+									?>
+									<script>
+										jQuery( document ).ready( function($) {
+											$( '#direktt-membership-invalidate' ).off( 'click' ).on( 'click', function( event ) {
+												event.preventDefault();
+												$( '#direktt-membership-invalidate-confirm' ).addClass( 'direktt-popup-on' );
+											});
+
+											$( '#direktt-membership-invalidate-confirm .direktt-popup-yes' ).off( 'click' ).on( 'click', function( event ) {
+												event.preventDefault();
+												$( '.direktt-loader-overlay' ).fadeIn();
+												$( '#direktt-membership-invalidate-confirm' ).removeClass( 'direktt-popup-on' );
+												$.ajax({
+													url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+													method: 'POST',
+													data: {
+														action: 'direktt_invalidate_membership',
+														issued_id: '<?php echo esc_js( intval( $membership->ID ) ); ?>',
+														nonce: '<?php echo esc_js( wp_create_nonce( 'direktt_invalidate_membership_nonce' ) ); ?>'
+													},
+													success: function( response ) {
+														if ( response.success ) {
+															<?php
+															$redirect_url = remove_query_arg( array( 'success_flag_activate' ) );
+															$redirect_url = add_query_arg( array( 'success_flag_invalidate' => '1' ), $redirect_url );
+															?>
+															window.location.href = '<?php echo $redirect_url; ?>';
+														} else {
+															$( '#direktt-membership-invalidate-alert' ).addClass( 'direktt-popup-on' );
+															$( '#direktt-membership-invalidate-alert .direktt-popup-text' ).text( response.data );
+															$( '.direktt-loader-overlay' ).fadeOut();
+														}
+													},
+													error: function() {
+														$( '#direktt-membership-invalidate-alert' ).addClass( 'direktt-popup-on' );
+														$( '#direktt-membership-invalidate-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error invalidating the membership.', 'direktt-membership' ) ); ?>" );
+														$( '.direktt-loader-overlay' ).fadeOut();
+													}
+												});
+											});
+
+											$( '#direktt-membership-invalidate-confirm .direktt-popup-no' ).off( 'click' ).on( 'click', function( event ) {
+												event.preventDefault();
+												$( '#direktt-membership-invalidate-confirm' ).removeClass( 'direktt-popup-on' );
+											});
+
+											$( '#direktt-membership-invalidate-alert .direktt-popup-ok' ).off( 'click' ).on( 'click', function( event ) {
+												event.preventDefault();
+												$( '#direktt-membership-invalidate-alert' ).removeClass( 'direktt-popup-on' );
+											});
+										});
+									</script>
+									<?php
+								} else {
+									?>
+									<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has no usages left.', 'direktt-membership' ); ?></p></div>
+									<?php
+								}
+							}
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<?php
+		}
+	}
+
+	$back_url = remove_query_arg( array( 'action', 'id', 'success_flag_activate', 'success_flag_invalidate', 'success_flag_record_usage' ) );;
+	echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
+}
+
+function handle_direktt_activate_membership() {
+	if ( isset( $_POST['nonce'], $_POST['issued_id'] ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_activate_membership_nonce' ) ) {
+			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		global $wpdb;
+		$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+
+		$issued_id = intval( wp_unslash( $_POST['issued_id'] ) );
+
+		$membership = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM $issued_table WHERE ID = %d",
+				$issued_id
+			)
+		);
+
+		if ( ! $membership ) {
+			wp_send_json_error( esc_html__( 'Membership not found.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		if ( intval( $membership->activated ) === 1 ) {
+			wp_send_json_error( esc_html__( 'Membership is already activated.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		$package_id = intval( $membership->membership_package_id );
+
+		$activation_time = current_time( 'mysql' );
+		$validity        = intval( get_post_meta( $package_id, 'direktt_membership_package_validity', true ) );
+		$expiry_time     = $validity > 0 ? date( 'Y-m-d H:i:s', strtotime( $activation_time . ' + ' . $validity . ' days' ) ) : null;
+		$updated = $wpdb->update(
+			$issued_table,
+			array(
+				'activated'       => 1,
+				'activation_time' => $activation_time,
+				'expiry_time'     => $expiry_time,
+			),
+			array( 'ID' => $issued_id ),
+			array(
+				'%d',
+				'%s',
+				$expiry_time ? '%s' : null,
+			),
+			array( '%d' )
+		);
+
+		if ( $updated !== false ) {
+			// TODO send message
+			wp_send_json_success();
+			wp_die();
+		} else {
+			wp_send_json_error( esc_html__( 'Failed to activate membership.', 'direktt-membership' ) );
+			wp_die();
+		}
+	}
+}
+
+function handle_direktt_invalidate_membership() {
+	if ( isset( $_POST['nonce'], $_POST['issued_id'] ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_invalidate_membership_nonce' ) ) {
+			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		global $wpdb;
+		$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+
+		$issued_id = intval( wp_unslash( $_POST['issued_id'] ) );
+
+		$membership = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM $issued_table WHERE ID = %d",
+				$issued_id
+			)
+		);
+
+		if ( ! $membership ) {
+			wp_send_json_error( esc_html__( 'Membership not found.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		if ( intval( $membership->valid ) === 0 ) {
+			wp_send_json_error( esc_html__( 'Membership is already invalidated.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		$updated = $wpdb->update(
+			$issued_table,
+			array(
+				'valid' => 0,
+			),
+			array( 'ID' => $issued_id ),
+			array( '%d' ),
+			array( '%d' )
+		);
+
+		if ( $updated !== false ) {
+			wp_send_json_success();
+			wp_die();
+		} else {
+			wp_send_json_error( esc_html__( 'Failed to invalidate membership.', 'direktt-membership' ) );
+			wp_die();
+		}
+	}
+}
+
+function handle_direktt_record_membership_usage() {
+	if ( isset( $_POST['nonce'], $_POST['issued_id'], $_POST['subscription_id'] ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_record_membership_usage_nonce' ) ) {
+			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		global $wpdb;
+		$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+		$usage_table  = $wpdb->prefix . 'direktt_membership_used';
+
+		$issued_id = intval( wp_unslash( $_POST['issued_id'] ) );
+		$subscription_id = sanitize_text_field( wp_unslash( $_POST['subscription_id'] ) );
+
+		$membership = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM $issued_table WHERE ID = %d",
+				$issued_id
+			)
+		);
+
+		if ( ! $membership ) {
+			wp_send_json_error( esc_html__( 'Membership not found.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		if ( intval( $membership->valid ) === 0 ) {
+			wp_send_json_error( esc_html__( 'Membership is invalidated.', 'direktt-membership' ) );
+			wp_die();
+		}
+
+		$package_id = intval( $membership->membership_package_id );
+
+		$max_usage = get_post_meta( $package_id, 'direktt_membership_package_max_usage', true );
+		if ( ! $max_usage ) {
+			$max_usage = 0;
+		}
+		$max_usage = intval( $max_usage );
+
+		if ( $max_usage > 0 ) {
+			$used_count = direktt_membership_get_used_count( $issued_id );
+			if ( $used_count >= $max_usage ) {
+				wp_send_json_error( esc_html__( 'No usages left for this membership.', 'direktt-membership' ) );
+				wp_die();
+			}
+		}
+		$usage_time = current_time( 'mysql' );
+
+		$inserted = $wpdb->insert(
+			$usage_table,
+			array(
+				'issued_id'                 => $issued_id,
+				'direktt_validator_user_id' => $subscription_id,
+				'usage_time'                => $usage_time,
+			),
+			array(
+				'%d',
+				'%s',
+				'%s',
+			)
+		);
+
+		if ( $inserted ) {
+			// TODO send message
+			wp_send_json_success();
+			wp_die();
+		} else {
+			wp_send_json_error( esc_html__( 'Failed to record usage.', 'direktt-membership' ) );
+			wp_die();
+		}
+	}
 }
