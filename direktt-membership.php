@@ -22,6 +22,9 @@ register_activation_hook( __FILE__, 'direktt_membership_create_used_database_tab
 // Settings Page
 add_action( 'direktt_setup_settings_pages', 'direktt_membership_setup_settings_page' );
 
+// Enqueue admin scripts
+add_action( 'admin_enqueue_scripts', 'direktt_membership_enqueue_scripts' );
+
 // Setup menus
 add_action( 'direktt_setup_admin_menu', 'direktt_membership_setup_menu' );
 
@@ -31,6 +34,10 @@ add_action( 'init', 'direktt_membership_register_cpt' );
 // Membership Packages Meta Boxes
 add_action( 'add_meta_boxes', 'direktt_membership_packages_add_custom_box' );
 add_action( 'save_post', 'save_direktt_membership_package_meta' );
+
+// Reports AJAX handlers
+add_action( 'wp_ajax_direktt_membership_get_issued_report', 'handle_direktt_membership_get_issued_report' );
+add_action( 'wp_ajax_direktt_membership_get_used_report', 'handle_direktt_membership_get_used_report' );
 
 // Membership Profile Tool Setup
 add_action( 'direktt_setup_profile_tools', 'direktt_membership_setup_profile_tool' );
@@ -46,6 +53,15 @@ add_action( 'wp_ajax_direktt_invalidate_membership', 'handle_direktt_invalidate_
 
 // Record Membership Usage AJAX Handler
 add_action( 'wp_ajax_direktt_record_membership_usage', 'handle_direktt_record_membership_usage' );
+
+// User tool shortcode
+add_shortcode( 'direktt_membership_tool', 'direktt_membership_tool_shortcode' );
+
+// Enqueue front-end scripts for membership tool
+add_action( 'wp_enqueue_scripts', 'direktt_membership_enqueue_fe_scripts' );
+
+// Membership validation shortcode
+add_shortcode( 'direktt_membership_validation', 'direktt_membership_validation_shortcode' );
 
 function direktt_membership_activation_check() {
 	if (! function_exists('is_plugin_active')) {
@@ -74,7 +90,7 @@ function direktt_membership_activation_check() {
 
         // Optionally also show the inline row message in the plugins list
         add_action(
-            'after_plugin_row_direktt-cross-sell/direktt-cross-sell.php',
+            'after_plugin_row_direktt-membership/direktt-membership.php',
             function () {
                 echo '<tr class="plugin-update-tr"><td colspan="3" style="box-shadow:none;">'
                     . '<div style="color:#b32d2e;font-weight:bold;">'
@@ -160,6 +176,21 @@ function direktt_membership_setup_settings_page() {
 	);
 }
 
+function direktt_membership_enqueue_scripts( $hook ) {
+	if ( $hook === 'direktt_page_direktt-settings' && isset( $_GET['subpage' ] ) && sanitize_text_field( $_GET['subpage'] ) === 'membership' ) {
+		wp_enqueue_media();
+		wp_enqueue_style( 'wp-color-picker' );
+		wp_enqueue_script( 'wp-color-picker' );
+		wp_enqueue_script(
+			'qr-code-styling', // Handle
+			plugin_dir_url( __FILE__ ) . 'assets/js/qr-code-styling.js', // Source
+			array(), // Dependencies (none in this case)
+			null,
+		);
+	}
+}
+
+
 function direktt_membership_settings() {
 	// Success message flag
 	$success = false;
@@ -174,6 +205,10 @@ function direktt_membership_settings() {
 
 		update_option( 'direktt_membership_issue_categories', isset( $_POST['direktt_membership_issue_categories'] ) ? intval( $_POST['direktt_membership_issue_categories'] ) : 0 );
 		update_option( 'direktt_membership_issue_tags', isset( $_POST['direktt_membership_issue_tags'] ) ? intval( $_POST['direktt_membership_issue_tags'] ) : 0 );
+
+		update_option( 'direktt_membership_qr_code_image', isset( $_POST['direktt_membership_qr_code_image'] ) ? esc_url_raw( $_POST['direktt_membership_qr_code_image'] ) : '' );
+		update_option( 'direktt_membership_qr_code_color', isset( $_POST['direktt_membership_qr_code_color'] ) ? sanitize_hex_color( $_POST['direktt_membership_qr_code_color'] ) : '#000000' );
+		update_option( 'direktt_membership_qr_code_bg_color', isset( $_POST['direktt_membership_qr_code_bg_color'] ) ? sanitize_hex_color( $_POST['direktt_membership_qr_code_bg_color'] ) : '#ffffff' );
 
 		update_option( 'direktt_membership_user_issuance', isset( $_POST['direktt_membership_user_issuance'] ) ? 'yes' : 'no' );
         update_option( 'direktt_membership_user_issuance_template', isset( $_POST['direktt_membership_user_issuance_template'] ) ? intval( $_POST['direktt_membership_user_issuance_template'] ) : 0 );
@@ -198,7 +233,11 @@ function direktt_membership_settings() {
 
 	$issue_categories = get_option( 'direktt_membership_issue_categories', 0 );
 	$issue_tags       = get_option( 'direktt_membership_issue_tags', 0 );
-	
+
+	$qr_code_image    = get_option( 'direktt_membership_qr_code_image', '' );
+	$qr_code_color    = get_option( 'direktt_membership_qr_code_color', '#000000' );
+	$qr_code_bg_color = get_option( 'direktt_membership_qr_code_bg_color', '#ffffff' );
+
 	$membership_user_issuance           = get_option( 'direktt_membership_user_issuance', 'no' ) === 'yes';
     $membership_user_issuance_template  = intval( get_option( 'direktt_membership_user_issuance_template', 0 ) );
     $membership_admin_issuance          = get_option( 'direktt_membership_admin_issuance', 'no' ) === 'yes';
@@ -278,6 +317,196 @@ function direktt_membership_settings() {
 							<?php endforeach; ?>
 						</select>
 						<p class="description"><?php esc_html_e( 'Users with this tag will be able to Issue/Validate Memberships.', 'direktt-membership' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="direktt_membership_qr_code_image"><?php echo esc_html__( 'QR Code Logo', 'direktt-membership' ); ?></label></th>
+					<td>
+						<input type="text" id="direktt_membership_qr_code_image" name="direktt_membership_qr_code_image" value="<?php echo esc_attr( $qr_code_image ?? '' ); ?>" />
+						<input type="button" id="direktt_membership_qr_code_image_button" class="button" value="<?php echo esc_html__( 'Choose Image', 'direktt-membership' ); ?>" />
+						<p class="description"><?php echo esc_html__( 'Optional Logo/Image to Display at Center of QR Code', 'direktt-membership' ); ?></p>
+						<script>
+							jQuery( document ).ready(function($) {
+								var mediaUploader;
+
+								$( '#direktt_membership_qr_code_image_button' ).click(function(e) {
+									e.preventDefault();
+
+									// If the uploader object has already been created, reopen it
+									if (mediaUploader) {
+										mediaUploader.open();
+										return;
+									}
+
+									// Create the media uploader
+									mediaUploader = wp.media.frames.file_frame = wp.media({
+										title: '<?php echo esc_js( __( 'Choose Image', 'direktt-membership' ) ); ?>',
+										button: {
+											text: '<?php echo esc_js( __( 'Choose Image', 'direktt-membership' ) ); ?>'
+										},
+										multiple: false
+									});
+
+									// When an image is selected, run a callback
+									mediaUploader.on( 'select', function() {
+										var attachment = mediaUploader.state().get( 'selection' ).first().toJSON();
+										$( '#direktt_membership_qr_code_image' ).val( attachment.url );
+										$( '#direktt_membership_qr_code_image' ).trigger( 'change' );
+									});
+
+									// Open the uploader dialog
+									mediaUploader.open();
+								});
+							});
+						</script>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="direktt_membership_qr_code_color"><?php echo esc_html__( 'QR Code Color', 'direktt-membership' ); ?></label></th>
+					<td>
+						<input type="text" id="direktt_membership_qr_code_color" name="direktt_membership_qr_code_color" value="<?php echo esc_attr( $qr_code_color ?? '#000000' ); ?>" />
+						<p class="description"><?php echo esc_html__( 'Optional Color of Dots in the QR Code', 'direktt-membership' ); ?></p>
+						<script>
+							jQuery( document ).ready( function($) {
+								$( '#direktt_membership_qr_code_color' ).wpColorPicker();
+							});
+						</script>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="direktt_membership_qr_code_bg_color"><?php echo esc_html__( 'QR Code Background Color', 'direktt-membership' ); ?></label></th>
+					<td>
+						<input type="text" id="direktt_membership_qr_code_bg_color" name="direktt_membership_qr_code_bg_color" value="<?php echo esc_attr( $qr_code_bg_color ?? '#ffffff' ); ?>" />
+						<p class="description"><?php echo esc_html__( 'Optional Color of the QR Code Background.', 'direktt-membership' ); ?></p>
+						<script>
+							jQuery( document ).ready(function($) {
+								$( '#direktt_membership_qr_code_bg_color' ).wpColorPicker();
+							});
+						</script>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="direktt-membership-qr-code-canvas-wrapper"><?php echo esc_html__( 'QR Code Preview', 'direktt-membership' ); ?></label></th>
+					<td>
+						<div class="direktt-membership-qr-code-canvas-wrapper">
+							<div id="direktt-membership-qr-code-canvas"></div>
+						</div>
+						<?php
+						$actionObject = json_encode(
+							array(
+								'action' => array(
+									'type'    => 'link',
+									'params'  => array(
+										'url'    => 'direktt.com',
+										'target' => 'browser',
+									),
+									'retVars' => array(),
+								),
+							)
+						);
+						?>
+						<script type="text/javascript">
+							const qrCode = new QRCodeStyling({
+								width: 350,
+								height: 350,
+								type: "svg",
+								data: '<?php echo $actionObject; ?>',
+								image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
+								dotsOptions: {
+									color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
+									type: "rounded"
+								},
+								backgroundOptions: {
+									color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
+								},
+								imageOptions: {
+									crossOrigin: "anonymous",
+									margin: 20
+								}
+							});
+
+							qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+
+							jQuery(document).ready(function($) {
+								$('#direktt_membership_qr_code_image').on('change', function() {
+									var newQrCode = new QRCodeStyling({
+										width: 350,
+										height: 350,
+										type: "svg",
+										data: '<?php echo $actionObject; ?>',
+										image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
+										dotsOptions: {
+											color: $( '#direktt_membership_qr_code_color' ).val() ? $( '#direktt_membership_qr_code_color' ).val() : '#000000',
+											type: "rounded"
+										},
+										backgroundOptions: {
+											color: $( '#direktt_membership_qr_code_bg_color' ).val() ? $( '#direktt_membership_qr_code_bg_color' ).val() : '#ffffff',
+										},
+										imageOptions: {
+											crossOrigin: "anonymous",
+											margin: 20
+										}
+									});
+
+									$( '#direktt-membership-qr-code-canvas' ).empty();
+									newQrCode.append( document.getElementById( "direktt-membership-qr-code-canvas" ) );
+								});
+								$( '#direktt_membership_qr_code_color' ).wpColorPicker({
+									change: function( event, ui ) {
+										let color = ui.color.toString();
+
+										var newQrCode = new QRCodeStyling({
+											width: 350,
+											height: 350,
+											type: "svg",
+											data: '<?php echo $actionObject; ?>',
+											image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
+											dotsOptions: {
+												color: color,
+												type: "rounded"
+											},
+											backgroundOptions: {
+												color: $( '#direktt_membership_qr_code_bg_color' ).val() ? $( '#direktt_membership_qr_code_bg_color' ).val() : '#ffffff',
+											},
+											imageOptions: {
+												crossOrigin: "anonymous",
+												margin: 20
+											}
+										});
+
+										$( '#direktt-membership-qr-code-canvas' ).empty();
+										newQrCode.append( document.getElementById( "direktt-membership-qr-code-canvas" ) );
+									}
+								});
+								$( '#direktt_membership_qr_code_bg_color' ).wpColorPicker({
+									change: function( event, ui ) {
+										let color = ui.color.toString();
+
+										var newQrCode = new QRCodeStyling({
+											width: 350,
+											height: 350,
+											type: "svg",
+											data: '<?php echo $actionObject; ?>',
+											image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
+											dotsOptions: {
+												color: $( '#direktt_membership_qr_code_color' ).val() ? $( '#direktt_membership_qr_code_color' ).val() : '#000000',
+												type: "rounded"
+											},
+											backgroundOptions: {
+												color: color,
+											},
+											imageOptions: {
+												crossOrigin: "anonymous",
+												margin: 20
+											}
+										});
+
+										$( '#direktt-membership-qr-code-canvas' ).empty();
+										newQrCode.append( document.getElementById( "direktt-membership-qr-code-canvas" ) );
+									}
+								});
+							});
+						</script>
 					</td>
 				</tr>
 				<tr>
@@ -685,6 +914,197 @@ function direktt_membership_packages_render_reports_meta_box( $post ) {
 	<?php
 }
 
+function handle_direktt_membership_get_issued_report() {
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_reports_meta_box' ) ) {
+		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-cross-sell' ) );
+		wp_die();
+	}
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( esc_html__( 'Unauthorized.', 'direktt-cross-sell' ) );
+		wp_die();
+	}
+
+	if ( ! isset( $_POST['post_id'], $_POST['range'] ) ) {
+		wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
+		wp_die();
+	}
+
+	global $wpdb;
+
+	$post_id      = intval( $_POST['post_id'] ); // used as partner_id
+	$range        = sanitize_text_field( $_POST['range'] );
+	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+
+	// Build WHERE
+	$where = $wpdb->prepare( 'partner_id = %d', $post_id );
+
+	if ( in_array( $range, array( '7', '30', '90' ), true ) ) {
+		$days   = intval( $range );
+		$where .= $wpdb->prepare( ' AND coupon_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
+	} elseif ( $range === 'custom' ) {
+		if ( ! isset( $_POST['from'], $_POST['to'] ) ) {
+			wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
+			wp_die();
+		}
+		$from   = sanitize_text_field( $_POST['from'] ); // format: Y-m-d or Y-m-d H:i:s
+		$to     = sanitize_text_field( $_POST['to'] );
+		$where .= $wpdb->prepare( ' AND coupon_time BETWEEN %s AND %s', $from, $to );
+	}
+
+	// Get issued coupons
+	$query   = "SELECT * FROM {$issued_table} WHERE {$where}";
+	$results = $wpdb->get_results( $query );
+
+	if ( empty( $results ) ) {
+		wp_send_json_error( esc_html__( 'No data found.', 'direktt-cross-sell' ) );
+		wp_die();
+	}
+
+	// Build CSV with custom columns
+	$csv = fopen( 'php://temp', 'r+' );
+
+	// Headers
+	$headers = array(
+		'ID',
+		'Package Name',
+		'Reciever Display Name',
+		'Time of Issue',
+		'Time of Expiring',
+		'Coupon Valid',
+	);
+	fputcsv( $csv, $headers );
+
+	foreach ( $results as $row ) {
+		$partner_name       = get_the_title( $row->partner_id );
+		$voucher_group_name = get_the_title( $row->coupon_group_id );
+
+		$line = array(
+			$row->ID,
+			$partner_name,
+			$voucher_group_name,
+			$row->coupon_group_id,
+			$row->coupon_time,
+			$row->coupon_expires,
+			$row->coupon_valid == 1 ? 'true' : 'false',
+		);
+		fputcsv( $csv, $line );
+	}
+
+	rewind( $csv );
+	$csv_content = stream_get_contents( $csv );
+	fclose( $csv );
+
+	// Save to uploads
+	$upload_dir = wp_upload_dir();
+	$filename   = 'issued_report_' . time() . '.csv';
+	$filepath   = $upload_dir['path'] . '/' . $filename;
+	$fileurl    = $upload_dir['url'] . '/' . $filename;
+
+	file_put_contents( $filepath, $csv_content );
+
+	wp_send_json_success( array( 'url' => $fileurl ) );
+	wp_die();
+}
+
+function handle_direktt_membership_get_used_report() {
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_reports_meta_box' ) ) {
+		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-cross-sell' ) );
+		wp_die();
+	}
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( esc_html__( 'Unauthorized.', 'direktt-cross-sell' ) );
+		wp_die();
+	}
+
+	if ( ! isset( $_POST['post_id'], $_POST['range'] ) ) {
+		wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
+		wp_die();
+	}
+
+	global $wpdb;
+
+	$post_id = intval( $_POST['post_id'] );
+	$range   = sanitize_text_field( $_POST['range'] );
+
+	$issued_table   = $wpdb->prefix . 'direktt_membership_issued';
+	$used_ind_table = $wpdb->prefix . 'direktt_membership_used';
+
+	// --- Range filter (applies to coupon_used_time) ---
+	$date_condition = '';
+	if ( in_array( $range, array( '7', '30', '90' ), true ) ) {
+		$days           = intval( $range );
+		$date_condition = $wpdb->prepare( 'AND u.coupon_used_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
+	} elseif ( $range === 'custom' ) {
+		if ( ! isset( $_POST['from'], $_POST['to'] ) ) {
+			wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
+			wp_die();
+		}
+		$from           = sanitize_text_field( $_POST['from'] );
+		$to             = sanitize_text_field( $_POST['to'] );
+		$date_condition = $wpdb->prepare( 'AND u.coupon_used_time BETWEEN %s AND %s', $from, $to );
+	}
+
+	// --- Used ---
+	$query   = "
+        SELECT u.ID,
+               u.issued_id,
+               u.direktt_validator_user_id,
+               u.coupon_used_time,
+               i.partner_id,
+               i.coupon_group_id
+        FROM {$used_ind_table} u
+        INNER JOIN {$issued_table} i ON u.issued_id = i.ID
+        WHERE i.partner_id = %d {$date_condition}
+    ";
+	$results = $wpdb->get_results( $wpdb->prepare( $query, $post_id ) );
+
+	// --- CSV ---
+	$csv = fopen( 'php://temp', 'r+' );
+
+	$headers = array(
+		'Partner Name',
+		'Issue ID',
+		'Voucher Group Name',
+		'Validator Display Name',
+		'Validation Time',
+	);
+	fputcsv( $csv, $headers );
+
+	// Add results
+	foreach ( $results as $row ) {
+		$partner_name       = get_the_title( $row->partner_id );
+		$voucher_group_name = get_the_title( $row->coupon_group_id );
+		$profile_user       = Direktt_User::get_user_by_subscription_id( $row->direktt_validator_user_id );
+		$validator_name     = $profile_user['direktt_display_name'];
+
+		$line = array(
+			$partner_name,
+			$row->issued_id,
+			$voucher_group_name,
+			$validator_name,
+			$row->coupon_used_time,
+		);
+		fputcsv( $csv, $line );
+	}
+
+	rewind( $csv );
+	$csv_content = stream_get_contents( $csv );
+	fclose( $csv );
+
+	// Save to uploads
+	$upload_dir = wp_upload_dir();
+	$filename   = 'used_report_' . time() . '.csv';
+	$filepath   = $upload_dir['path'] . '/' . $filename;
+	$fileurl    = $upload_dir['url'] . '/' . $filename;
+
+	file_put_contents( $filepath, $csv_content );
+
+	wp_send_json_success( array( 'url' => $fileurl ) );
+	wp_die();
+}
+
 function save_direktt_membership_package_meta( $post_id ) {
 
 	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
@@ -775,13 +1195,15 @@ function direktt_membership_render_profile_tool() {
 	}
 	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) {
 		direktt_membership_render_view_details( sanitize_text_field( $_GET['id'] ) );
+		$back_url = remove_query_arg( array( 'action', 'id', 'success_flag_activate', 'success_flag_invalidate', 'success_flag_record_usage' ) );
+		echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
 		return;
 	}
 	direktt_membership_render_assign_membership_packages();
-	direktt_membership_render_membership_packages();
+	direktt_membership_render_membership_packages( sanitize_text_field( $_GET['subscriptionId'] ) );
 }
 
-function direktt_membership_render_membership_packages() {
+function direktt_membership_render_membership_packages( $subscription_id ) {
 	?>
 	<div id="direktt-membership-packages-wrapper">
 		<h3><?php echo esc_html__( 'Membership Packages', 'direktt-membership' ); ?></h3>
@@ -803,7 +1225,7 @@ function direktt_membership_render_membership_packages() {
 
 		<div id="direktt-membership-packages-all">
 			<?php
-			$all_memberships = direktt_get_all_user_memberships( sanitize_text_field( $_GET['subscriptionId'] ) );
+			$all_memberships = direktt_get_all_user_memberships( sanitize_text_field( $subscription_id ) );
 			if ( empty( $all_memberships ) ) {
 				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
 			} else {
@@ -812,7 +1234,6 @@ function direktt_membership_render_membership_packages() {
 					<thead>
 						<tr>
 							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
@@ -835,12 +1256,9 @@ function direktt_membership_render_membership_packages() {
 
 							$used_count  = direktt_membership_get_used_count( $membership['issued_id'] );
 							$usages_left = $max_usage === 0 ? esc_html__( 'Unlimited', 'direktt-membership' ) : max( 0, $max_usage - $used_count ); 
-
-							$profile_user = Direktt_User::get_user_by_subscription_id( $membership['assigner_user_id'] );
 							?>
 							<tr>
 								<td><?php echo esc_html( $package_name ); ?></td>
-								<td><?php echo esc_html( $profile_user['direktt_display_name'] ); ?><br><?php echo esc_html( $membership['assigner_user_id'] ); ?></td>
 								<td><?php echo $membership['activated'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 								<td><?php echo esc_html( human_time_diff( strtotime( $membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
 								<td>
@@ -874,7 +1292,7 @@ function direktt_membership_render_membership_packages() {
 								<td><?php echo $membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 							</tr>
 							<tr>
-								<td colspan="8">
+								<td colspan="7">
 									<?php
 									$redirect_url = remove_query_arg( array( 'success_flag' ) );
 									$redirect_url = add_query_arg( array( 'action' => 'view_details', 'id' => $membership['issued_id'] ), $redirect_url );
@@ -894,7 +1312,7 @@ function direktt_membership_render_membership_packages() {
 
 		<div id="direktt-membership-packages-active" style="display: none;">
 			<?php
-			$active_memberships = direktt_get_active_user_memberships( sanitize_text_field( $_GET['subscriptionId'] ) );
+			$active_memberships = direktt_get_active_user_memberships( $subscription_id );
 			if ( empty( $active_memberships ) ) {
 				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
 			} else {
@@ -903,7 +1321,6 @@ function direktt_membership_render_membership_packages() {
 					<thead>
 						<tr>
 							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
@@ -925,13 +1342,10 @@ function direktt_membership_render_membership_packages() {
 							}
 
 							$used_count  = direktt_membership_get_used_count( $active_membership['issued_id'] );
-							$usages_left = $max_usage === 0 ? esc_html__( 'Unlimited', 'direktt-membership' ) : max( 0, $max_usage - $used_count ); 
-
-							$profile_user = Direktt_User::get_user_by_subscription_id( $active_membership['assigner_user_id'] );
+							$usages_left = $max_usage === 0 ? esc_html__( 'Unlimited', 'direktt-membership' ) : max( 0, $max_usage - $used_count );
 							?>
 							<tr>
 								<td><?php echo esc_html( $package_name ); ?></td>
-								<td><?php echo esc_html( $profile_user['direktt_display_name'] ); ?><br><?php echo esc_html( $active_membership['assigner_user_id'] ); ?></td>
 								<td><?php echo $active_membership['activated'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 								<td><?php echo esc_html( human_time_diff( strtotime( $active_membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
 								<td>
@@ -965,7 +1379,7 @@ function direktt_membership_render_membership_packages() {
 								<td><?php echo $active_membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 							</tr>
 							<tr>
-								<td colspan="8">
+								<td colspan="7">
 									<?php
 									$redirect_url = remove_query_arg( array( 'success_flag' ) );
 									$redirect_url = add_query_arg( array( 'action' => 'view_details', 'id' => $active_membership['issued_id'] ), $redirect_url );
@@ -1068,7 +1482,7 @@ function direktt_membership_render_assign_membership_packages() {
 		echo '</tbody></table>';
 		echo Direktt_Public::direktt_render_confirm_popup( 'direktt-assign-membership-package-confirm', __( 'Are you sure you want to assign this membership package?', 'direktt-membership' ) );
 		echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-alert', '' );
-		echo Direktt_Public::direktt_render_loader( __( 'Don\'t refresh the page.', 'direktt-membership' ) );
+		echo Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) );
 		wp_nonce_field( 'direktt_assign_membership_package_nonce', 'direktt_assign_membership_package_nonce_field' );
 		?>
 		<script>
@@ -1086,6 +1500,7 @@ function direktt_membership_render_assign_membership_packages() {
 					event.preventDefault();
 					var packageId = $( this ).data( 'package-id' );
 					$( '#direktt-assign-membership-package-confirm' ).removeClass( 'direktt-popup-on' );
+					$( '.direktt-loader-overlay' ).fadeIn();
 					$.ajax({
 						url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
 						method: 'POST',
@@ -1102,11 +1517,13 @@ function direktt_membership_render_assign_membership_packages() {
 							} else {
 								$( '#direktt-membership-alert' ).addClass( 'direktt-popup-on' );
 								$( '#direktt-membership-alert .direktt-popup-text' ).text( response.data );
+								$( '.direktt-loader-overlay' ).fadeOut();
 							}
 						},
 						error: function() {
 							$( '#direktt-membership-alert' ).addClass( 'direktt-popup-on' );
 							$( '#direktt-membership-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error assigning the membership package.', 'direktt-membership' ) ); ?>" );
+							$( '.direktt-loader-overlay' ).fadeOut();
 						}
 					});
 				});
@@ -1222,6 +1639,11 @@ function direktt_get_all_user_memberships( $subscription_id ) {
 	}
 
 	foreach ( $memberships as $membership ) {
+		$membership_post = get_post( intval( $membership->membership_package_id ) );
+		if ( ! $membership_post || $membership_post->post_status !== 'publish' ) {
+			continue;
+		}
+
 		$membership_data[] = array(
 			'issued_id'        => intval( $membership->ID ),
 			'id'               => intval( $membership->membership_package_id ),
@@ -1255,6 +1677,11 @@ function direktt_get_active_user_memberships( $subscription_id ) {
 	}
 
 	foreach ( $memberships as $membership ) {
+		$membership_post = get_post( intval( $membership->membership_package_id ) );
+		if ( ! $membership_post || $membership_post->post_status !== 'publish' ) {
+			continue;
+		}
+
 		$membership_data[] = array(
 			'issued_id'        => intval( $membership->ID ),
 			'id'               => intval( $membership->membership_package_id ),
@@ -1299,6 +1726,12 @@ function direktt_membership_render_view_details( $id ) {
 				echo '<div class="notice"><p>' . esc_html__( 'Membership invalidated successfully.', 'direktt-membership' ) . '</p></div>';
 			}
 		}
+		if ( isset( $_GET['success_flag_record_usage'] ) ) {
+			$success_flag_record_usage = sanitize_text_field( wp_unslash( $_GET['success_flag_record_usage'] ) );
+			if ( $success_flag_record_usage === '1' ) {
+				echo '<div class="notice"><p>' . esc_html__( 'Membership used successfully.', 'direktt-membership' ) . '</p></div>';
+			}
+		}
 		$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
 		if ( $type === '0' ) {
 			?>
@@ -1306,7 +1739,6 @@ function direktt_membership_render_view_details( $id ) {
 				<thead>
 					<tr>
 						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
@@ -1317,12 +1749,6 @@ function direktt_membership_render_view_details( $id ) {
 				<tbody>
 					<tr>
 						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
-						<td>
-							<?php
-							$profile_user = Direktt_User::get_user_by_subscription_id( $membership->direktt_assigner_user_id );
-							echo esc_html( $profile_user['direktt_display_name'] ) . '<br>' . esc_html( $membership->direktt_assigner_user_id );
-							?>
-						</td>
 						<td><?php echo $membership->activated ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 						<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
 						<td>
@@ -1355,7 +1781,7 @@ function direktt_membership_render_view_details( $id ) {
 						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
-						<td colspan="7">
+						<td colspan="6">
 							<?php
 							if ( ! $membership->valid ) {
 								?>
@@ -1366,7 +1792,6 @@ function direktt_membership_render_view_details( $id ) {
 									?>
 									<button class="button" id="direktt-membership-activate"><?php echo esc_html__( 'Activate Membership', 'direktt-membership' ); ?> </button>
 									<?php
-									echo Direktt_Public::direktt_render_loader( __( 'Activating membership, please wait...', 'direktt-membership' ) );
 									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-activate-confirm', __( 'Are you sure you want to activate this membership?', 'direktt-membership' ) );
 									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-activate-alert', '' );
 									?>
@@ -1392,9 +1817,10 @@ function direktt_membership_render_view_details( $id ) {
 												success: function( response ) {
 													if ( response.success ) {
 														<?php
-														$redirect_url = add_query_arg( 'success_flag_activate', '1' );
+														$redirect_url = remove_query_arg( array( 'success_flag_record_usage', 'success_flag_invalidate' ) );
+														$redirect_url = add_query_arg( 'success_flag_activate', '1', $redirect_url );
 														?>
-														window.location.href = '<?php echo $redirect_url; ?>';
+														window.location.href = '<?php echo esc_url_raw( $redirect_url ); ?>';
 													} else {
 														$( '#direktt-membership-activate-alert' ).addClass( 'direktt-popup-on' );
 														$( '#direktt-membership-activate-alert .direktt-popup-text' ).text( response.data );
@@ -1421,11 +1847,21 @@ function direktt_membership_render_view_details( $id ) {
 									});
 									</script>
 									<?php
+								} else {
+									if ( strtotime( $membership->expiry_time ) < strtotime( current_time( 'mysql' ) ) ) {
+										?>
+										<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has expired.', 'direktt-membership' ); ?></p></div>
+										<?php
+									} else {
+										?>
+										<div class="notice"><p><?php echo esc_html__( 'This membership is currently active.', 'direktt-membership' ); ?></p></div>
+										<?php
+									}
 								}
 								?>
 								<button class="button button-red button" id="direktt-membership-invalidate"><?php echo esc_html__( 'Invalidate Membership', 'direktt-membership' ); ?> </button>
 								<?php
-								echo Direktt_Public::direktt_render_loader( __( 'Invalidating membership, please wait...', 'direktt-membership' ) );
+								echo Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) );
 								echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) );
 								echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' );
 								?>
@@ -1451,10 +1887,10 @@ function direktt_membership_render_view_details( $id ) {
 												success: function( response ) {
 													if ( response.success ) {
 														<?php
-														$redirect_url = remove_query_arg( array( 'success_flag_activate' ) );
+														$redirect_url = remove_query_arg( array( 'success_flag_activate', 'success_flag_record_usage' ) );
 														$redirect_url = add_query_arg( array( 'success_flag_invalidate' => '1' ), $redirect_url );
 														?>
-														window.location.href = '<?php echo $redirect_url; ?>';
+														window.location.href = '<?php echo esc_url_raw( $redirect_url ); ?>';
 													} else {
 														$( '#direktt-membership-invalidate-alert' ).addClass( 'direktt-popup-on' );
 														$( '#direktt-membership-invalidate-alert .direktt-popup-text' ).text( response.data );
@@ -1494,7 +1930,6 @@ function direktt_membership_render_view_details( $id ) {
 				<thead>
 					<tr>
 						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Assigned by', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
@@ -1503,12 +1938,6 @@ function direktt_membership_render_view_details( $id ) {
 				<tbody>
 					<tr>
 						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
-						<td>
-							<?php
-							$profile_user = Direktt_User::get_user_by_subscription_id( $membership->direktt_assigner_user_id );
-							echo esc_html( $profile_user['direktt_display_name'] ) . '<br>' . esc_html( $membership->direktt_assigner_user_id );
-							?>
-						</td>
 						<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
 						<td>
 							<?php
@@ -1529,7 +1958,7 @@ function direktt_membership_render_view_details( $id ) {
 						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
-						<td colspan="7">
+						<td colspan="4">
 							<?php
 							if ( ! $membership->valid ) {
 								?>
@@ -1540,7 +1969,6 @@ function direktt_membership_render_view_details( $id ) {
 									?>
 									<button class="button" id="direktt-membership-record-usage"><?php echo esc_html__( 'Record Usage', 'direktt-membership' ); ?> </button>
 									<?php
-									echo Direktt_Public::direktt_render_loader( __( 'Recording usage, please wait...', 'direktt-membership' ) );
 									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-record-usage-confirm', __( 'Are you sure you want to record usage for this membership?', 'direktt-membership' ) );
 									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-record-usage-alert', '' );
 									?>
@@ -1567,9 +1995,10 @@ function direktt_membership_render_view_details( $id ) {
 												success: function( response ) {
 													if ( response.success ) {
 														<?php
-														$redirect_url = add_query_arg( 'success_flag_record_usage', '1' );
+														$redirect_url = remove_query_arg( array( 'success_flag_invalidate', 'success_flag_activate' ) );
+														$redirect_url = add_query_arg( 'success_flag_record_usage', '1', $redirect_url );
 														?>
-														window.location.href = '<?php echo $redirect_url; ?>';
+														window.location.href = '<?php echo esc_url_raw( $redirect_url ); ?>';
 													} else {
 														$( '#direktt-membership-record-usage-alert' ).addClass( 'direktt-popup-on' );
 														$( '#direktt-membership-record-usage-alert .direktt-popup-text' ).text( response.data );
@@ -1597,7 +2026,7 @@ function direktt_membership_render_view_details( $id ) {
 									</script>
 									<button class="button button-red button" id="direktt-membership-invalidate"><?php echo esc_html__( 'Invalidate Membership', 'direktt-membership' ); ?> </button>
 									<?php
-									echo Direktt_Public::direktt_render_loader( __( 'Invalidating membership, please wait...', 'direktt-membership' ) );
+									echo Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) );
 									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) );
 									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' );
 									?>
@@ -1623,10 +2052,10 @@ function direktt_membership_render_view_details( $id ) {
 													success: function( response ) {
 														if ( response.success ) {
 															<?php
-															$redirect_url = remove_query_arg( array( 'success_flag_activate' ) );
+															$redirect_url = remove_query_arg( array( 'success_flag_activate', 'success_flag_record_usage' ) );
 															$redirect_url = add_query_arg( array( 'success_flag_invalidate' => '1' ), $redirect_url );
 															?>
-															window.location.href = '<?php echo $redirect_url; ?>';
+															window.location.href = '<?php echo esc_url_raw( $redirect_url ); ?>';
 														} else {
 															$( '#direktt-membership-invalidate-alert' ).addClass( 'direktt-popup-on' );
 															$( '#direktt-membership-invalidate-alert .direktt-popup-text' ).text( response.data );
@@ -1667,9 +2096,6 @@ function direktt_membership_render_view_details( $id ) {
 			<?php
 		}
 	}
-
-	$back_url = remove_query_arg( array( 'action', 'id', 'success_flag_activate', 'success_flag_invalidate', 'success_flag_record_usage' ) );;
-	echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
 }
 
 function handle_direktt_activate_membership() {
@@ -1723,7 +2149,27 @@ function handle_direktt_activate_membership() {
 		);
 
 		if ( $updated !== false ) {
-			// TODO send message
+			$membership_user_activation           = get_option( 'direktt_membership_user_activation', 'no' ) === 'yes';
+			$membership_user_activation_template  = intval( get_option( 'direktt_membership_user_activation_template', 0 ) );
+			$membership_admin_activation          = get_option( 'direktt_membership_admin_activation', 'no' ) === 'yes';
+			$membership_admin_activation_template = intval( get_option( 'direktt_membership_admin_activation_template', 0 ) );
+
+			$reciever_id = $membership->direktt_receiver_user_id;
+
+			if ( $membership_user_activation && $membership_user_activation_template !== 0 ) {
+				Direktt_Message::send_message_template(
+                    array( $reciever_id ),
+                    $membership_user_activation_template,
+					array()
+                );
+			}
+
+			if ( $membership_admin_activation && $membership_admin_activation_template !== 0 ) {
+				Direktt_Message::send_message_template_to_admin(
+                    $membership_admin_activation_template,
+                    array()
+                );
+			}
 			wp_send_json_success();
 			wp_die();
 		} else {
@@ -1845,7 +2291,28 @@ function handle_direktt_record_membership_usage() {
 		);
 
 		if ( $inserted ) {
-			// TODO send message
+			$membership_user_usage          = get_option( 'direktt_membership_user_usage', 'no' ) === 'yes';
+			$membership_user_usage_template  = intval( get_option( 'direktt_membership_user_usage_template', 0 ) );
+			$membership_admin_usage          = get_option( 'direktt_membership_admin_usage', 'no' ) === 'yes';
+			$membership_admin_usage_template = intval( get_option( 'direktt_membership_admin_usage_template', 0 ) );
+
+			$reciever_id = $membership->direktt_receiver_user_id;
+
+			if ( $membership_user_usage && $membership_user_usage_template !== 0 ) {
+				Direktt_Message::send_message_template(
+                    array( $reciever_id ),
+                    $membership_user_usage_template,
+					array()
+                );
+			}
+
+			if ( $membership_admin_usage && $membership_admin_usage_template !== 0 ) {
+				Direktt_Message::send_message_template_to_admin(
+                    $membership_admin_usage_template,
+                    array()
+                );
+			}
+			
 			wp_send_json_success();
 			wp_die();
 		} else {
@@ -1853,4 +2320,372 @@ function handle_direktt_record_membership_usage() {
 			wp_die();
 		}
 	}
+}
+
+function direktt_membership_enqueue_fe_scripts() {
+	global $enqueue_direktt_member_scripts;
+	if ( $enqueue_direktt_member_scripts ) {
+		wp_enqueue_script(
+			'qr-code-styling', // Handle
+			plugin_dir_url( __FILE__ ) . 'assets/js/qr-code-styling.js', // Source
+			array(), // Dependencies (none in this case)
+			null,
+		);
+	}
+}
+
+function direktt_membership_tool_shortcode() {
+	global $direktt_user;
+	if ( ! $direktt_user ) {
+		ob_start();
+		echo '<div id="direktt-profile-wrapper">';
+		echo '<div id="direktt-profile">';
+		echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'You need to be logged in to access the Membership Tool.', 'direktt-membership' ) . '</p></div>';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+		return ob_get_clean();
+	}
+
+	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) {
+		global $enqueue_direktt_member_scripts;
+		$enqueue_direktt_member_scripts = true;
+		$id = intval( $_GET['id'] );
+		ob_start();
+		echo '<div id="direktt-profile-wrapper">';
+		echo '<div id="direktt-profile">';
+		echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
+		global $wpdb;
+		$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+
+		global $direktt_user;
+		$subscription_id = $direktt_user['direktt_user_id'];
+
+		$membership = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM $issued_table WHERE ID = %d",
+				intval( $id )
+			)
+		);
+
+		if ( ! $membership ) {
+			echo '<div class="notice notice-error"><p>' . esc_html__( 'Membership not found.', 'direktt-membership' ) . '</p></div>';
+		} else {
+			$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
+
+			$qr_code_image    = get_option( 'direktt_membership_qr_code_image', '' );
+			$qr_code_color    = get_option( 'direktt_membership_qr_code_color', '#000000' );
+			$qr_code_bg_color = get_option( 'direktt_membership_qr_code_bg_color', '#ffffff' );
+
+			$validation_slug = get_option( 'direktt_membership_validation_slug', '' );
+			$validation_url  = site_url( $validation_slug, 'https' );
+			if ( $type === '0' ) {
+				?>
+				<table>
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
+							<td><?php echo $membership->activated ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+							<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+							<td>
+								<?php
+								if ( $membership->activation_time ) {
+									$activation_time = strtotime( $membership->activation_time );
+									$current_time = strtotime( current_time( 'mysql' ) );
+									echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+								} else {
+									echo esc_html( '/' );
+								}
+								?>
+							</td>
+							<td>
+								<?php
+								if ( $membership->expiry_time ) {
+									$expiry_time  = strtotime( $membership->expiry_time );
+									$current_time = strtotime( current_time( 'mysql' ) );
+
+									if ( $expiry_time > $current_time ) {
+										echo esc_html__( 'in ', 'direktt-membership' ) . esc_html( human_time_diff( $current_time, $expiry_time ) );
+									} else {
+										echo esc_html__( 'expired ', 'direktt-membership' ) . esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+									}
+								} else {
+									echo esc_html( '/' );
+								}
+								?>
+							</td>
+							<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+						</tr>
+						<tr>
+							<td colspan="6">
+								<?php
+								if ( ! $membership->valid ) {
+									?>
+									<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
+									<?php
+								} else {
+									if ( ! ( strtotime( $membership->expiry_time ) < strtotime( current_time( 'mysql' ) ) ) ) {
+										?>
+										<div class="notice"><p><?php echo esc_html__( 'This membership is currently active.', 'direktt-membership' ); ?></p></div>
+										<?php
+									} else {
+										if ( ! $membership->activated ) {
+											$actionObject = json_encode(
+												array(
+													'action' => array(
+														'type'    => 'link',
+														'params'  => array(
+															'url'    => $validation_url,
+															'target' => 'app',
+														),
+														'retVars' => array(
+															'membership_guid' => $membership->membership_guid,
+														),
+													),
+												)
+											);
+											?>
+											<div id="direktt-membership-qr-code-canvas"></div>
+											<script type="text/javascript">
+												const qrCode = new QRCodeStyling({
+													width: 350,
+													height: 350,
+													type: "svg",
+													data: '<?php echo $actionObject; ?>',
+													image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
+													dotsOptions: {
+														color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
+														type: "rounded"
+													},
+													backgroundOptions: {
+														color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
+													},
+													imageOptions: {
+														crossOrigin: "anonymous",
+														margin: 20
+													}
+												});
+
+												qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+											</script>
+											<?php
+										} else {
+											?>
+											<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has expired.', 'direktt-membership' ); ?></p></div>
+											<?php
+										}
+									}
+								}
+								?>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<?php
+			} else {
+				?>
+				<table>
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
+							<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+							<td>
+								<?php
+								$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
+								if ( ! $max_usage ) {
+									$max_usage = 0;
+								}
+								if ( $max_usage === 0 ) {
+									echo esc_html__( 'Unlimited', 'direktt-membership' );
+								} else {
+									$max_usage = intval( $max_usage );
+									$used_count = direktt_membership_get_used_count( intval( $id ) );
+									$usages_left = $max_usage - $used_count;
+									echo esc_html( $usages_left );
+								}
+								?>
+							</td>
+							<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+						</tr>
+						<tr>
+							<td colspan="4">
+								<?php
+								if ( ! $membership->valid ) {
+									?>
+									<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
+									<?php
+								} else {
+									if ( $usages_left > 0 || $max_usage === 0 ) {
+										$actionObject = json_encode(
+											array(
+												'action' => array(
+													'type'    => 'link',
+													'params'  => array(
+														'url'    => $validation_url,
+														'target' => 'app',
+													),
+													'retVars' => array(
+														'membership_guid' => $membership->membership_guid,
+													),
+												),
+											)
+										);
+										?>
+										<div id="direktt-membership-qr-code-canvas"></div>
+										<script type="text/javascript">
+											const qrCode = new QRCodeStyling({
+												width: 350,
+												height: 350,
+												type: "svg",
+												data: '<?php echo $actionObject; ?>',
+												image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
+												dotsOptions: {
+													color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
+													type: "rounded"
+												},
+												backgroundOptions: {
+													color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
+												},
+												imageOptions: {
+													crossOrigin: "anonymous",
+													margin: 20
+												}
+											});
+
+											qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+										</script>
+										<?php
+									} else {
+										?>
+										<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has no usages left.', 'direktt-membership' ); ?></p></div>
+										<?php
+									}
+								}
+								?>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<?php
+			}
+		}
+
+		$back_url = remove_query_arg( array( 'action', 'id' ) );
+		echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+		return ob_get_clean();
+	}
+
+	ob_start();
+	echo '<div id="direktt-profile-wrapper">';
+	echo '<div id="direktt-profile">';
+	echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
+	direktt_membership_render_membership_packages( $direktt_user['direktt_user_id'] );
+	echo '</div>';
+	echo '</div>';
+	echo '</div>';
+	return ob_get_clean();
+}
+
+function direktt_membership_user_can_validate() {
+	global $direktt_user;
+
+	if ( class_exists( 'Direktt_User' ) && Direktt_User::is_direktt_admin() ) {
+		return true;
+	}
+
+	$issue_categories = get_option( 'direktt_membership_issue_categories', 0 );
+	$issue_tags       = get_option( 'direktt_membership_issue_tags', 0 );
+
+	$category_slug = '';
+	$tag_slug      = '';
+
+	if ( $issue_categories !== 0 ) {
+		$category      = get_term( $issue_categories, 'direkttusercategories' );
+		$category_slug = $category ? $category->slug : '';
+	}
+
+	if ( $issue_tags !== 0 ) {
+		$tag      = get_term( $issue_tags, 'direkttusertags' );
+		$tag_slug = $tag ? $tag->slug : '';
+	}
+
+	// Check via provided function
+	if ( class_exists( 'Direktt_User' ) && Direktt_User::has_direktt_taxonomies( $direktt_user, $category_slug ? array( $category_slug ) : array(), $tag_slug ? array( $tag_slug ) : array() ) ) {
+		return true;
+	}
+	return false;
+}
+
+function direktt_membership_validation_shortcode() {
+	ob_start();
+	echo '<div id="direktt-profile-wrapper">';
+	echo '<div id="direktt-profile">';
+	echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
+	if ( ! direktt_membership_user_can_validate() ) {	
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'You do not have permission to validate memberships.', 'direktt-membership' ) . '</p></div>';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+		return ob_get_clean();
+	}
+
+	if ( ! isset( $_GET['membership_guid'] ) || empty( $_GET['membership_guid'] ) ) {
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'No membership GUID provided.', 'direktt-membership' ) . '</p></div>';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+		return ob_get_clean();
+	}
+	global $wpdb;
+	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+	$membership_guid = sanitize_text_field( wp_unslash( $_GET['membership_guid'] ) );
+
+	$membership = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT * FROM $issued_table WHERE membership_guid = %s",
+			$membership_guid
+		)
+	);
+
+	if ( ! $membership ) {
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'Membership not found.', 'direktt-membership' ) . '</p></div>';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+		return ob_get_clean();
+	}
+
+	add_action( 'wp_enqueue_scripts', function() {
+		if ( ! wp_script_is( 'jquery' ) ) {
+			wp_enqueue_script( 'jquery' );
+		}
+	});
+
+	direktt_membership_render_view_details( $membership->ID );
+	echo '</div>';
+	echo '</div>';
+	echo '</div>';
+	return ob_get_clean();
 }
