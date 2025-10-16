@@ -633,6 +633,147 @@ function direktt_membership_settings() {
 
 			<?php submit_button( esc_html__( 'Save Settings', 'direktt-membership' ) ); ?>
 		</form>
+		<div class="direktt-membership-reports">
+			<h2><?php echo esc_html__( 'Generate Membership Reports', 'direktt-membership' ); ?></h2>
+			<table>
+				<?php wp_nonce_field( 'direktt_membership_reports', 'direktt_membership_reports_nonce' ); ?>
+				<tr>
+					<th scope="row"><label for="direktt-report-range"><?php echo esc_html__( 'Range', 'direktt-membership' ); ?></label></th>
+					<td>
+						<select id="direktt-report-range" name="direktt_report_range">
+							<option value="7"><?php echo esc_html__( 'Last 7 days', 'direktt-membership' ); ?></option>
+							<option value="30"><?php echo esc_html__( 'Last 30 days', 'direktt-membership' ); ?></option>
+							<option value="90"><?php echo esc_html__( 'Last 90 days', 'direktt-membership' ); ?></option>
+							<option value="custom"><?php echo esc_html__( 'Custom date range', 'direktt-membership' ); ?></option>
+						</select>
+					</td>
+				</tr>
+				<tr style="display: none;" id="direktt-custom-dates">
+					<th scope="row"><label for="direktt-date-from"><?php echo esc_html__( 'From - To', 'direktt-membership' ); ?></label></th>
+					<td>
+						<input type="date" id="direktt-date-from" name="direktt_date_from" />
+						<?php echo esc_html__( '-', 'direktt-membership' ); ?>
+						<input type="date" id="direktt-date-to" name="direktt_date_to" />
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2">
+						<p>
+							<button type="button" class="button" id="direktt-generate-issued"><?php echo esc_html__( 'Generate Issued Report', 'direktt-membership' ); ?></button>
+							<button type="button" class="button" id="direktt-generate-used"><?php echo esc_html__( 'Generate Used Report', 'direktt-membership' ); ?></button>
+						</p>
+
+						<script>
+							jQuery(document).ready(function($) {
+								// toggle custom date inputs
+								$( '#direktt-report-range' ).on('change', function() {
+									if ( $( this ).val() === 'custom' ) {
+										$( '#direktt-custom-dates' ).show();
+									} else {
+										$( '#direktt-custom-dates' ).hide();
+									}
+								});
+
+								// helper to collect data
+								function collectReportData(type) {
+									var nonce = $( 'input[name="direktt_membership_reports_nonce"]' ).val();
+									var range = $( '#direktt-report-range' ).val();
+									var from = $( '#direktt-date-from' ).val();
+									var to = $( '#direktt-date-to' ).val();
+
+									var ajaxData = {
+										action: type === 'issued' ? 'direktt_membership_get_issued_report' : 'direktt_membership_get_used_report',
+										range: range,
+										nonce: nonce
+									};
+
+									if ( range === 'custom' ) {
+										ajaxData.from = from;
+										ajaxData.to = to;
+									}
+
+									return ajaxData;
+								}
+
+								// Bind buttons
+								$( '#direktt-generate-issued' ).off( 'click' ).on( 'click', function( event ) {
+									event.preventDefault();
+									var data = collectReportData( 'issued' );
+									// Basic client-side validation for custom range
+									if ( data.range === 'custom' ) {
+										if ( ! data.from || ! data.to ) {
+											alert("<?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?>");
+											return;
+										}
+										if ( data.from > data.to ) {
+											alert("<?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?>");
+											return;
+										}
+									}
+
+									$( this ).prop( 'disabled', true );
+									$( this ).text( "<?php echo esc_js( __( 'Generating report...', 'direktt-membership' ) ); ?>" );
+									$.ajax({
+										url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+										method: 'POST',
+										data: data,
+										success: function( response ) {
+											if ( response.success ) {
+												window.location.href = response.data.url;
+											} else {
+												alert( response.data );
+											}
+										},
+										error: function() {
+											alert("<?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?>");
+										}
+									}).always(function() {
+										$( '#direktt-generate-issued' ).prop( 'disabled', false );
+										$( '#direktt-generate-issued' ).text( "<?php echo esc_js( __( 'Generate Issued Report', 'direktt-membership' ) ); ?>" );
+									});
+								});
+
+								$( '#direktt-generate-used' ).off( 'click' ).on( 'click', function( event ) {
+									event.preventDefault();
+									var data = collectReportData( 'used' );
+									if ( data.range === 'custom' ) {
+										if ( ! data.from || ! data.to ) {
+											alert( "<?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?>" );
+											return;
+										}
+										if ( data.from > data.to ) {
+											alert( "<?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?>" );
+											return;
+										}
+									}
+
+									$( this ).prop( 'disabled', true );
+									$( this ).text( "<?php echo esc_js( __( 'Generating report...', 'direktt-membership' ) ); ?>" );
+									$.ajax({
+										url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+										method: 'POST',
+										data: data,
+										success: function(response) {
+											if (response.success) {
+												window.location.href = response.data.url;
+											} else {
+												alert(response.data);
+											}
+										},
+										error: function() {
+											alert("<?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?>");
+										}
+									}).always(function() {
+										$( '#direktt-generate-used' ).prop( 'disabled', false );
+										$( '#direktt-generate-used' ).text( "<?php echo esc_js( __( 'Generate Used Report', 'direktt-membership' ) ); ?>" );
+									});
+								});
+							});
+						</script>
+					</td>
+				</tr>
+			</table>
+		</div>
 	</div>
 	<?php
 }
@@ -698,15 +839,6 @@ function direktt_membership_packages_add_custom_box() {
 		'normal',
 		'high'
 	);
-
-	add_meta_box(
-		'direktt_membership_packages_reports_mb',
-		esc_html__( 'CSV Reports', 'direktt-membership' ),
-		'direktt_membership_packages_render_reports_meta_box',
-		'direkttmpackages',
-		'normal',
-		'high'
-	);
 }
 
 function direktt_membership_packages_render_custom_box( $post ) {
@@ -767,155 +899,8 @@ function direktt_membership_packages_render_custom_box( $post ) {
 	<?php
 }
 
-function direktt_membership_packages_render_reports_meta_box( $post ) {
-	// Security nonce
-	wp_nonce_field( 'direktt_reports_meta_box', 'direktt_reports_meta_box_nonce' );
-
-	// Use esc to be safe
-	$post_id = intval( $post->ID );
-	?>
-	<table class="form-table">
-		<tr>
-			<th scope="row"><label for="direktt-report-range"><?php echo esc_html__( 'Range', 'direktt-membership' ); ?></label></th>
-			<td>
-				<select id="direktt-report-range" name="direktt_report_range">
-					<option value="7"><?php echo esc_html__( 'Last 7 days', 'direktt-membership' ); ?></option>
-					<option value="30"><?php echo esc_html__( 'Last 30 days', 'direktt-membership' ); ?></option>
-					<option value="90"><?php echo esc_html__( 'Last 90 days', 'direktt-membership' ); ?></option>
-					<option value="custom"><?php echo esc_html__( 'Custom date range', 'direktt-membership' ); ?></option>
-				</select>
-			</td>
-		</tr>
-		<tr style="display: none;" id="direktt-custom-dates">
-			<th scope="row"><label for="direktt-date-from"><?php echo esc_html__( 'From - To', 'direktt-membership' ); ?></label></th>
-			<td>
-				<input type="date" id="direktt-date-from" name="direktt_date_from" />
-				<?php echo esc_html__( '-', 'direktt-membership' ); ?>
-				<input type="date" id="direktt-date-to" name="direktt_date_to" />
-			</td>
-		</tr>
-	</table>
-
-	<p>
-		<button type="button" class="button" id="direktt-generate-issued"><?php echo esc_html__( 'Generate Issued Report', 'direktt-membership' ); ?></button>
-		<button type="button" class="button" id="direktt-generate-used"><?php echo esc_html__( 'Generate Used Report', 'direktt-membership' ); ?></button>
-	</p>
-
-	<input type="hidden" id="direktt-post-id" value="<?php echo esc_attr( $post_id ); ?>" />
-	<script>
-		jQuery(document).ready(function($) {
-			// toggle custom date inputs
-			$( '#direktt-report-range' ).on('change', function() {
-				if ( $( this ).val() === 'custom' ) {
-					$( '#direktt-custom-dates' ).show();
-				} else {
-					$( '#direktt-custom-dates' ).hide();
-				}
-			});
-
-			// helper to collect data
-			function collectReportData(type) {
-				var post_id = $( '#direktt-post-id' ).val();
-				var nonce = $( 'input[name="direktt_reports_meta_box_nonce"]' ).val();
-				var range = $( '#direktt-report-range' ).val();
-				var from = $( '#direktt-date-from' ).val();
-				var to = $( '#direktt-date-to' ).val();
-
-				var ajaxData = {
-					action: type === 'issued' ? 'direktt_membership_get_issued_report' : 'direktt_membership_get_used_report',
-					post_id: post_id,
-					range: range,
-					nonce: nonce
-				};
-
-				if ( range === 'custom' ) {
-					ajaxData.from = from;
-					ajaxData.to = to;
-				}
-
-				return ajaxData;
-			}
-
-			// Bind buttons
-			$( '#direktt-generate-issued' ).off( 'click' ).on( 'click', function( event ) {
-				event.preventDefault();
-				var data = collectReportData( 'issued' );
-				// Basic client-side validation for custom range
-				if ( data.range === 'custom' ) {
-					if ( ! data.from || ! data.to ) {
-						alert("<?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?>");
-						return;
-					}
-					if ( data.from > data.to ) {
-						alert("<?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?>");
-						return;
-					}
-				}
-
-				$( this ).prop( 'disabled', true );
-				$( this ).text( "<?php echo esc_js( __( 'Generating report...', 'direktt-membership' ) ); ?>" );
-				$.ajax({
-					url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
-					method: 'POST',
-					data: data,
-					success: function( response ) {
-						if ( response.success ) {
-							window.location.href = response.data.url;
-						} else {
-							alert( response.data );
-						}
-					},
-					error: function() {
-						alert("<?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?>");
-					}
-				}).always(function() {
-					$( '#direktt-generate-issued' ).prop( 'disabled', false );
-					$( '#direktt-generate-issued' ).text( "<?php echo esc_js( __( 'Generate Issued Report', 'direktt-membership' ) ); ?>" );
-				});
-			});
-
-			$( '#direktt-generate-used' ).off( 'click' ).on( 'click', function( event ) {
-				event.preventDefault();
-				var data = collectReportData( 'used' );
-				if ( data.range === 'custom' ) {
-					if ( ! data.from || ! data.to ) {
-						alert( "<?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?>" );
-						return;
-					}
-					if ( data.from > data.to ) {
-						alert( "<?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?>" );
-						return;
-					}
-				}
-
-				$( this ).prop( 'disabled', true );
-				$( this ).text( "<?php echo esc_js( __( 'Generating report...', 'direktt-membership' ) ); ?>" );
-				$.ajax({
-					url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
-					method: 'POST',
-					data: data,
-					success: function(response) {
-						if (response.success) {
-							window.location.href = response.data.url;
-						} else {
-							alert(response.data);
-						}
-					},
-					error: function() {
-						alert("<?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?>");
-					}
-				}).always(function() {
-					$( '#direktt-generate-used' ).prop( 'disabled', false );
-					$( '#direktt-generate-used' ).text( "<?php echo esc_js( __( 'Generate Used Report', 'direktt-membership' ) ); ?>" );
-				});
-			});
-		});
-	</script>
-	<?php
-}
-
 function handle_direktt_membership_get_issued_report() {
-	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_reports_meta_box' ) ) {
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_membership_reports' ) ) {
 		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-cross-sell' ) );
 		wp_die();
 	}
@@ -925,7 +910,7 @@ function handle_direktt_membership_get_issued_report() {
 		wp_die();
 	}
 
-	if ( ! isset( $_POST['post_id'], $_POST['range'] ) ) {
+	if ( ! isset( $_POST['range'] ) ) {
 		wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
 		wp_die();
 	}
@@ -936,28 +921,25 @@ function handle_direktt_membership_get_issued_report() {
 	$range        = sanitize_text_field( $_POST['range'] );
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	// Build WHERE
-	$where = $wpdb->prepare( 'partner_id = %d', $post_id );
-
 	if ( in_array( $range, array( '7', '30', '90' ), true ) ) {
-		$days   = intval( $range );
-		$where .= $wpdb->prepare( ' AND coupon_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
+		$days  = intval( $range );
+		$where = $wpdb->prepare( 'issue_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
 	} elseif ( $range === 'custom' ) {
 		if ( ! isset( $_POST['from'], $_POST['to'] ) ) {
-			wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
+			wp_send_json_error( esc_html__( 'Data error.', 'direktt-membership' ) );
 			wp_die();
 		}
-		$from   = sanitize_text_field( $_POST['from'] ); // format: Y-m-d or Y-m-d H:i:s
-		$to     = sanitize_text_field( $_POST['to'] );
-		$where .= $wpdb->prepare( ' AND coupon_time BETWEEN %s AND %s', $from, $to );
+		$from  = sanitize_text_field( $_POST['from'] ); // format: Y-m-d or Y-m-d H:i:s
+		$to    = sanitize_text_field( $_POST['to'] );
+		$where = $wpdb->prepare( 'issue_time BETWEEN %s AND %s', $from, $to );
 	}
 
-	// Get issued coupons
-	$query   = "SELECT * FROM {$issued_table} WHERE {$where}";
-	$results = $wpdb->get_results( $query );
+	// Get issued memberships
+	$query       = "SELECT * FROM {$issued_table} WHERE {$where}";
+	$memberships = $wpdb->get_results( $query );
 
-	if ( empty( $results ) ) {
-		wp_send_json_error( esc_html__( 'No data found.', 'direktt-cross-sell' ) );
+	if ( empty( $memberships ) ) {
+		wp_send_json_error( esc_html__( 'No data found.', 'direktt-membership' ) );
 		wp_die();
 	}
 
@@ -969,24 +951,44 @@ function handle_direktt_membership_get_issued_report() {
 		'ID',
 		'Package Name',
 		'Reciever Display Name',
+		'Activated',
 		'Time of Issue',
-		'Time of Expiring',
-		'Coupon Valid',
+		'Time of Activation',
+		'Expires on',
+		'Usages left',
+		'Valid',
 	);
 	fputcsv( $csv, $headers );
 
-	foreach ( $results as $row ) {
-		$partner_name       = get_the_title( $row->partner_id );
-		$voucher_group_name = get_the_title( $row->coupon_group_id );
+	foreach ( $memberships as $membership ) {
+		$package_name  = get_the_title( intval( $membership->membership_package_id ) );
+		$profile_user  = Direktt_User::get_user_by_subscription_id( $membership->direktt_receiver_user_id );
+		$reciever_name = $profile_user['direktt_display_name'];
+
+		$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
+		if ( $type === '1' ) { // usage based
+			$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
+			if ( $max_usage === 0 ) {
+				$usages_left = 'unlimited';
+			} else {
+				$used_count = direktt_membership_get_used_count( $membership->ID );
+				$usages_left = $max_usage - $used_count;
+			}
+		} else {
+			$usages_left = '/';
+		}
+		$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
 
 		$line = array(
-			$row->ID,
-			$partner_name,
-			$voucher_group_name,
-			$row->coupon_group_id,
-			$row->coupon_time,
-			$row->coupon_expires,
-			$row->coupon_valid == 1 ? 'true' : 'false',
+			$membership->ID,
+			$package_name,
+			$reciever_name,
+			$membership->activated == 1 ? 'true' : 'false',
+			$membership->issue_time,
+			$membership->activation_time ?? '/',
+			$membership->expiry_time ?? '/',
+			$usages_left ?? '/',
+			$membership->valid == 1 ? 'true' : 'false',
 		);
 		fputcsv( $csv, $line );
 	}
@@ -1008,7 +1010,7 @@ function handle_direktt_membership_get_issued_report() {
 }
 
 function handle_direktt_membership_get_used_report() {
-	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_reports_meta_box' ) ) {
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_membership_reports' ) ) {
 		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-cross-sell' ) );
 		wp_die();
 	}
@@ -1018,7 +1020,7 @@ function handle_direktt_membership_get_used_report() {
 		wp_die();
 	}
 
-	if ( ! isset( $_POST['post_id'], $_POST['range'] ) ) {
+	if ( ! isset( $_POST['range'] ) ) {
 		wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
 		wp_die();
 	}
@@ -1029,13 +1031,11 @@ function handle_direktt_membership_get_used_report() {
 	$range   = sanitize_text_field( $_POST['range'] );
 
 	$issued_table   = $wpdb->prefix . 'direktt_membership_issued';
-	$used_ind_table = $wpdb->prefix . 'direktt_membership_used';
+	$used_table = $wpdb->prefix . 'direktt_membership_used';
 
-	// --- Range filter (applies to coupon_used_time) ---
-	$date_condition = '';
 	if ( in_array( $range, array( '7', '30', '90' ), true ) ) {
 		$days           = intval( $range );
-		$date_condition = $wpdb->prepare( 'AND u.coupon_used_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
+		$date_condition = $wpdb->prepare( 'usage_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
 	} elseif ( $range === 'custom' ) {
 		if ( ! isset( $_POST['from'], $_POST['to'] ) ) {
 			wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
@@ -1043,48 +1043,51 @@ function handle_direktt_membership_get_used_report() {
 		}
 		$from           = sanitize_text_field( $_POST['from'] );
 		$to             = sanitize_text_field( $_POST['to'] );
-		$date_condition = $wpdb->prepare( 'AND u.coupon_used_time BETWEEN %s AND %s', $from, $to );
+		$date_condition = $wpdb->prepare( 'usage_time BETWEEN %s AND %s', $from, $to );
 	}
 
 	// --- Used ---
-	$query   = "
-        SELECT u.ID,
-               u.issued_id,
-               u.direktt_validator_user_id,
-               u.coupon_used_time,
-               i.partner_id,
-               i.coupon_group_id
-        FROM {$used_ind_table} u
-        INNER JOIN {$issued_table} i ON u.issued_id = i.ID
-        WHERE i.partner_id = %d {$date_condition}
-    ";
-	$results = $wpdb->get_results( $wpdb->prepare( $query, $post_id ) );
+	$query  = "SELECT * FROM {$used_table} WHERE {$date_condition}";
+	$usages = $wpdb->get_results( $wpdb->prepare( $query ) );
 
 	// --- CSV ---
 	$csv = fopen( 'php://temp', 'r+' );
 
 	$headers = array(
-		'Partner Name',
-		'Issue ID',
-		'Voucher Group Name',
+		'ID',
+		'Package Name',
+		'Time of Usage',
+		'Reciever Display Name',
 		'Validator Display Name',
-		'Validation Time',
 	);
 	fputcsv( $csv, $headers );
 
 	// Add results
-	foreach ( $results as $row ) {
-		$partner_name       = get_the_title( $row->partner_id );
-		$voucher_group_name = get_the_title( $row->coupon_group_id );
-		$profile_user       = Direktt_User::get_user_by_subscription_id( $row->direktt_validator_user_id );
-		$validator_name     = $profile_user['direktt_display_name'];
+	foreach ( $usages as $usage ) {
+		$issued_record = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM $issued_table WHERE ID = %d",
+				intval( $usage->issued_id )
+			)
+		);
+		if ( ! $issued_record ) {
+			continue;
+		}
+
+		$package_name = get_the_title( intval( $issued_record->membership_package_id ) );
+
+		$profile_user_reciever = Direktt_User::get_user_by_subscription_id( $usage->direktt_reciever_user_id );
+		$reciever_name         = $profile_user_reciever['direktt_display_name'];
+
+		$profile_user_validatior = Direktt_User::get_user_by_subscription_id( $usage->direktt_validator_user_id );
+		$validator_name          = $profile_user_validatior['direktt_display_name'];
 
 		$line = array(
-			$partner_name,
-			$row->issued_id,
-			$voucher_group_name,
+			$usage->ID,
+			$package_name,
+			$usage->usage_time,
+			$reciever_name,
 			$validator_name,
-			$row->coupon_used_time,
 		);
 		fputcsv( $csv, $line );
 	}
