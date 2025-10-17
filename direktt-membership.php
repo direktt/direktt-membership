@@ -77,7 +77,7 @@ function direktt_membership_activation_check() {
         deactivate_plugins(plugin_basename(__FILE__));
 
         // Prevent the “Plugin activated.” notice
-        if (isset($_GET['activate'])) {
+        if (isset($_GET['activate'])) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, just removing a query var.
             unset($_GET['activate']);
         }
 
@@ -115,7 +115,7 @@ function direktt_membership_create_issued_database_table() {
   			ID bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             membership_package_id varchar(256) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
 			direktt_assigner_user_id varchar(256) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
-            direktt_receiver_user_id varchar(256) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
+            direktt_reciever_user_id varchar(256) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
             issue_time timestamp NOT NULL,
             activation_time timestamp DEFAULT NULL,
             expiry_time timestamp DEFAULT NULL,
@@ -125,7 +125,7 @@ function direktt_membership_create_issued_database_table() {
   			PRIMARY KEY (ID),
   			KEY membership_package_id (membership_package_id),
 			KEY direktt_assigner_user_id (direktt_assigner_user_id),
-            KEY direktt_receiver_user_id (direktt_receiver_user_id),
+            KEY direktt_reciever_user_id (direktt_reciever_user_id),
             KEY issue_time (issue_time),
             KEY membership_guid (membership_guid)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 $charset_collate;";
@@ -134,9 +134,13 @@ function direktt_membership_create_issued_database_table() {
 
 	dbDelta( $sql );
 
-	$the_default_timestamp_query = "ALTER TABLE $table_name MODIFY COLUMN issue_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;";
+	$wpdb->query( $wpdb->prepare( "ALTER TABLE $table_name MODIFY COLUMN issue_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 
-	$wpdb->query( $the_default_timestamp_query );
+	// Justifications for phpcs ignores:
+	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $table_name is built from $wpdb->prefix + literal string.
+	// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct database query is acceptable here since schema changes cannot be performed via WordPress APIs or $wpdb helper functions. This runs only on plugin activation.
+	// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is irrelevant for schema modifications. The query changes table structure, not data, so wp_cache_* functions are not applicable.
+	// WordPress.DB.DirectDatabaseQuery.SchemaChange: Schema changes are discouraged in normal runtime, but this code executes only once during plugin activation to ensure correct table structure.
 }
 
 function direktt_membership_create_used_database_table() {
@@ -160,9 +164,13 @@ function direktt_membership_create_used_database_table() {
 	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 	dbDelta( $sql );
 
-	$the_default_timestamp_query = "ALTER TABLE $table_name MODIFY COLUMN usage_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;";
+	$wpdb->query( $wpdb->prepare( "ALTER TABLE $table_name MODIFY COLUMN usage_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 
-	$wpdb->query( $the_default_timestamp_query );
+	// Justifications for phpcs ignores:
+	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $table_name is built from $wpdb->prefix + literal string.
+	// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct database query is acceptable here since schema changes cannot be performed via WordPress APIs or $wpdb helper functions. This runs only on plugin activation.
+	// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is irrelevant for schema modifications. The query changes table structure, not data, so wp_cache_* functions are not applicable.
+	// WordPress.DB.DirectDatabaseQuery.SchemaChange: Schema changes are discouraged in normal runtime, but this code executes only once during plugin activation to ensure correct table structure.
 }
 
 function direktt_membership_setup_settings_page() {
@@ -177,7 +185,7 @@ function direktt_membership_setup_settings_page() {
 }
 
 function direktt_membership_enqueue_scripts( $hook ) {
-	if ( $hook === 'direktt_page_direktt-settings' && isset( $_GET['subpage' ] ) && sanitize_text_field( $_GET['subpage'] ) === 'membership' ) {
+	if ( $hook === 'direktt_page_direktt-settings' && isset( $_GET['subpage' ] ) && sanitize_text_field( wp_unslash( $_GET['subpage'] ) ) === 'membership' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, subpage based router for enqueuing scripts.
 		wp_enqueue_media();
 		wp_enqueue_style( 'wp-color-picker' );
 		wp_enqueue_script( 'wp-color-picker' );
@@ -185,7 +193,8 @@ function direktt_membership_enqueue_scripts( $hook ) {
 			'qr-code-styling', // Handle
 			plugin_dir_url( __FILE__ ) . 'assets/js/qr-code-styling.js', // Source
 			array(), // Dependencies (none in this case)
-			null,
+			filetime( plugin_dir_path( __FILE__ ) . 'assets/js/qr-code-styling.js' ), // Version based on file modification time
+			true // Load in the footer
 		);
 	}
 }
@@ -197,33 +206,33 @@ function direktt_membership_settings() {
 
 	// Handle form submission
 	if (
-		$_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['direktt_admin_membership_nonce'] )
-		&& wp_verify_nonce( $_POST['direktt_admin_membership_nonce'], 'direktt_admin_membership_save' )
+		isset( $_SERVER['REQUEST_METHOD'] ) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['direktt_admin_membership_nonce'] )
+		&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['direktt_admin_membership_nonce'] ) ), 'direktt_admin_membership_save' )
 	) {
 		// Sanitize and update options
-		update_option( 'direktt_membership_validation_slug', isset( $_POST['direktt_membership_validation_slug'] ) ? sanitize_text_field( $_POST['direktt_membership_validation_slug'] ) : '' );
+		update_option( 'direktt_membership_validation_slug', isset( $_POST['direktt_membership_validation_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['direktt_membership_validation_slug'] ) ) : '' );
 
-		update_option( 'direktt_membership_issue_categories', isset( $_POST['direktt_membership_issue_categories'] ) ? intval( $_POST['direktt_membership_issue_categories'] ) : 0 );
-		update_option( 'direktt_membership_issue_tags', isset( $_POST['direktt_membership_issue_tags'] ) ? intval( $_POST['direktt_membership_issue_tags'] ) : 0 );
+		update_option( 'direktt_membership_issue_categories', isset( $_POST['direktt_membership_issue_categories'] ) ? intval( wp_unslash( $_POST['direktt_membership_issue_categories'] ) ) : 0 );
+		update_option( 'direktt_membership_issue_tags', isset( $_POST['direktt_membership_issue_tags'] ) ? intval( wp_unslash( $_POST['direktt_membership_issue_tags'] ) ) : 0 );
 
-		update_option( 'direktt_membership_qr_code_image', isset( $_POST['direktt_membership_qr_code_image'] ) ? esc_url_raw( $_POST['direktt_membership_qr_code_image'] ) : '' );
-		update_option( 'direktt_membership_qr_code_color', isset( $_POST['direktt_membership_qr_code_color'] ) ? sanitize_hex_color( $_POST['direktt_membership_qr_code_color'] ) : '#000000' );
-		update_option( 'direktt_membership_qr_code_bg_color', isset( $_POST['direktt_membership_qr_code_bg_color'] ) ? sanitize_hex_color( $_POST['direktt_membership_qr_code_bg_color'] ) : '#ffffff' );
+		update_option( 'direktt_membership_qr_code_image', isset( $_POST['direktt_membership_qr_code_image'] ) ? esc_url_raw( wp_unslash( $_POST['direktt_membership_qr_code_image'] ) ) : '' );
+		update_option( 'direktt_membership_qr_code_color', isset( $_POST['direktt_membership_qr_code_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['direktt_membership_qr_code_color'] ) ) : '#000000' );
+		update_option( 'direktt_membership_qr_code_bg_color', isset( $_POST['direktt_membership_qr_code_bg_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['direktt_membership_qr_code_bg_color'] ) ) : '#ffffff' );
 
 		update_option( 'direktt_membership_user_issuance', isset( $_POST['direktt_membership_user_issuance'] ) ? 'yes' : 'no' );
-        update_option( 'direktt_membership_user_issuance_template', isset( $_POST['direktt_membership_user_issuance_template'] ) ? intval( $_POST['direktt_membership_user_issuance_template'] ) : 0 );
+        update_option( 'direktt_membership_user_issuance_template', isset( $_POST['direktt_membership_user_issuance_template'] ) ? intval( wp_unslash( $_POST['direktt_membership_user_issuance_template'] ) ) : 0 );
         update_option( 'direktt_membership_admin_issuance', isset( $_POST['direktt_membership_admin_issuance'] ) ? 'yes' : 'no' );
-        update_option( 'direktt_membership_admin_issuance_template', isset( $_POST['direktt_membership_admin_issuance_template'] ) ? intval( $_POST['direktt_membership_admin_issuance_template'] ) : 0 );
+        update_option( 'direktt_membership_admin_issuance_template', isset( $_POST['direktt_membership_admin_issuance_template'] ) ? intval( wp_unslash( $_POST['direktt_membership_admin_issuance_template'] ) ) : 0 );
 
 		update_option( 'direktt_membership_user_activation', isset( $_POST['direktt_membership_user_activation'] ) ? 'yes' : 'no' );
-        update_option( 'direktt_membership_user_activation_template', isset( $_POST['direktt_membership_user_activation_template'] ) ? intval( $_POST['direktt_membership_user_activation_template'] ) : 0 );
+        update_option( 'direktt_membership_user_activation_template', isset( $_POST['direktt_membership_user_activation_template'] ) ? intval( wp_unslash( $_POST['direktt_membership_user_activation_template'] ) ) : 0 );
         update_option( 'direktt_membership_admin_activation', isset( $_POST['direktt_membership_admin_activation'] ) ? 'yes' : 'no' );
-        update_option( 'direktt_membership_admin_activation_template', isset( $_POST['direktt_membership_admin_activation_template'] ) ? intval( $_POST['direktt_membership_admin_activation_template'] ) : 0 );
+        update_option( 'direktt_membership_admin_activation_template', isset( $_POST['direktt_membership_admin_activation_template'] ) ? intval( wp_unslash( $_POST['direktt_membership_admin_activation_template'] ) ) : 0 );
 
 		update_option( 'direktt_membership_user_usage', isset( $_POST['direktt_membership_user_usage'] ) ? 'yes' : 'no' );
-        update_option( 'direktt_membership_user_usage_template', isset( $_POST['direktt_membership_user_usage_template'] ) ? intval( $_POST['direktt_membership_user_usage_template'] ) : 0 );
+        update_option( 'direktt_membership_user_usage_template', isset( $_POST['direktt_membership_user_usage_template'] ) ? intval( wp_unslash( $_POST['direktt_membership_user_usage_template'] ) ) : 0 );
         update_option( 'direktt_membership_admin_usage', isset( $_POST['direktt_membership_admin_usage'] ) ? 'yes' : 'no' );
-        update_option( 'direktt_membership_admin_usage_template', isset( $_POST['direktt_membership_admin_usage_template'] ) ? intval( $_POST['direktt_membership_admin_usage_template'] ) : 0 );
+        update_option( 'direktt_membership_admin_usage_template', isset( $_POST['direktt_membership_admin_usage_template'] ) ? intval( wp_unslash( $_POST['direktt_membership_admin_usage_template'] ) ) : 0 );
 
 		$success = true;
 	}
@@ -263,7 +272,7 @@ function direktt_membership_settings() {
         'posts_per_page' => -1,
         'orderby'        => 'title',
         'order'          => 'ASC',
-        'meta_query'     => array(
+        'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- - Justification: bounded, cached, selective query on small dataset
             array(
                 'key'     => 'direkttMTType',
                 'value'   => array( 'all', 'none' ),
@@ -392,17 +401,15 @@ function direktt_membership_settings() {
 							<div id="direktt-membership-qr-code-canvas"></div>
 						</div>
 						<?php
-						$actionObject = json_encode(
-							array(
-								'action' => array(
-									'type'    => 'link',
-									'params'  => array(
-										'url'    => 'direktt.com',
-										'target' => 'browser',
-									),
-									'retVars' => array(),
+						$actionObject = array(
+							'action' => array(
+								'type'    => 'link',
+								'params'  => array(
+									'url'    => 'direktt.com',
+									'target' => 'browser',
 								),
-							)
+								'retVars' => array(),
+							),
 						);
 						?>
 						<script type="text/javascript">
@@ -410,7 +417,7 @@ function direktt_membership_settings() {
 								width: 350,
 								height: 350,
 								type: "svg",
-								data: '<?php echo $actionObject; ?>',
+								data: '<?php echo wp_json_encode( $actionObject ); ?>',
 								image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
 								dotsOptions: {
 									color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
@@ -433,7 +440,7 @@ function direktt_membership_settings() {
 										width: 350,
 										height: 350,
 										type: "svg",
-										data: '<?php echo $actionObject; ?>',
+										data: '<?php echo wp_json_encode( $actionObject ); ?>',
 										image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
 										dotsOptions: {
 											color: $( '#direktt_membership_qr_code_color' ).val() ? $( '#direktt_membership_qr_code_color' ).val() : '#000000',
@@ -459,7 +466,7 @@ function direktt_membership_settings() {
 											width: 350,
 											height: 350,
 											type: "svg",
-											data: '<?php echo $actionObject; ?>',
+											data: '<?php echo wp_json_encode( $actionObject ); ?>',
 											image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
 											dotsOptions: {
 												color: color,
@@ -486,7 +493,7 @@ function direktt_membership_settings() {
 											width: 350,
 											height: 350,
 											type: "svg",
-											data: '<?php echo $actionObject; ?>',
+											data: '<?php echo wp_json_encode( $actionObject ); ?>',
 											image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
 											dotsOptions: {
 												color: $( '#direktt_membership_qr_code_color' ).val() ? $( '#direktt_membership_qr_code_color' ).val() : '#000000',
@@ -900,158 +907,185 @@ function direktt_membership_packages_render_custom_box( $post ) {
 }
 
 function handle_direktt_membership_get_issued_report() {
-	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_membership_reports' ) ) {
-		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-cross-sell' ) );
-		wp_die();
-	}
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_membership_reports' ) ) {
+        wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-membership' ) );
+        wp_die();
+    }
 
-	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_send_json_error( esc_html__( 'Unauthorized.', 'direktt-cross-sell' ) );
-		wp_die();
-	}
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( esc_html__( 'Unauthorized.', 'direktt-membership' ) );
+        wp_die();
+    }
 
-	if ( ! isset( $_POST['range'] ) ) {
-		wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
-		wp_die();
-	}
+    if ( ! isset( $_POST['range'] ) ) {
+        wp_send_json_error( esc_html__( 'Data error.', 'direktt-membership' ) );
+        wp_die();
+    }
 
-	global $wpdb;
+    global $wpdb;
 
-	$post_id      = intval( $_POST['post_id'] ); // used as partner_id
-	$range        = sanitize_text_field( $_POST['range'] );
-	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+    $post_id      = isset( $_POST['post_id'] ) ? intval( wp_unslash( $_POST['post_id'] ) ) : 0; // used as partner_id
+    $range        = sanitize_text_field( wp_unslash( $_POST['range'] ) );
+    $issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	if ( in_array( $range, array( '7', '30', '90' ), true ) ) {
-		$days  = intval( $range );
-		$where = $wpdb->prepare( 'issue_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
-	} elseif ( $range === 'custom' ) {
-		if ( ! isset( $_POST['from'], $_POST['to'] ) ) {
-			wp_send_json_error( esc_html__( 'Data error.', 'direktt-membership' ) );
-			wp_die();
-		}
-		$from  = sanitize_text_field( $_POST['from'] ); // format: Y-m-d or Y-m-d H:i:s
-		$to    = sanitize_text_field( $_POST['to'] );
-		$where = $wpdb->prepare( 'issue_time BETWEEN %s AND %s', $from, $to );
-	}
+    if ( in_array( $range, array( '7', '30', '90' ), true ) ) {
+        $days  = intval( $range );
+        $where = $wpdb->prepare( 'issue_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
+    } elseif ( $range === 'custom' ) {
+        if ( ! isset( $_POST['from'], $_POST['to'] ) ) {
+            wp_send_json_error( esc_html__( 'Data error.', 'direktt-membership' ) );
+            wp_die();
+        }
+        $from  = sanitize_text_field( wp_unslash( $_POST['from'] ) ); // format: Y-m-d or Y-m-d H:i:s
+        $to    = sanitize_text_field( wp_unslash( $_POST['to'] ) );
+        $where = $wpdb->prepare( 'issue_time BETWEEN %s AND %s', $from, $to );
+    }
 
-	// Get issued memberships
-	$query       = "SELECT * FROM {$issued_table} WHERE {$where}";
-	$memberships = $wpdb->get_results( $query );
+    // Get issued memberships
+	$memberships = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $issued_table WHERE $where" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
-	if ( empty( $memberships ) ) {
-		wp_send_json_error( esc_html__( 'No data found.', 'direktt-membership' ) );
-		wp_die();
-	}
+	// Justifications for phpcs ignores:
+	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string, $where is built from literal string + sanitized inputs.
+	// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+	// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 
-	// Build CSV with custom columns
-	$csv = fopen( 'php://temp', 'r+' );
+    if ( empty( $memberships ) ) {
+        wp_send_json_error( esc_html__( 'No data found.', 'direktt-membership' ) );
+        wp_die();
+    }
 
-	// Headers
-	$headers = array(
-		'ID',
-		'Package Name',
-		'Reciever Display Name',
-		'Activated',
-		'Time of Issue',
-		'Time of Activation',
-		'Expires on',
-		'Usages left',
-		'Valid',
-	);
-	fputcsv( $csv, $headers );
+    // Load WP_Filesystem
+    if ( ! function_exists( 'get_filesystem_method' ) ) {
+        require_once( ABSPATH . 'wp-admin/includes/file.php' );
+    }
 
-	foreach ( $memberships as $membership ) {
-		$package_name  = get_the_title( intval( $membership->membership_package_id ) );
-		$profile_user  = Direktt_User::get_user_by_subscription_id( $membership->direktt_receiver_user_id );
-		$reciever_name = $profile_user['direktt_display_name'];
+    global $wp_filesystem;
+    $method = get_filesystem_method();
+    if ( 'direct' === $method ) {
+        WP_Filesystem();
+    }
 
-		$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
-		if ( $type === '1' ) { // usage based
-			$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
-			if ( $max_usage === 0 ) {
-				$usages_left = 'unlimited';
-			} else {
-				$used_count = direktt_membership_get_used_count( $membership->ID );
-				$usages_left = $max_usage - $used_count;
-			}
-		} else {
-			$usages_left = '/';
-		}
-		$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
+    // Prepare CSV content in an array format (no need for fopen())
+    $csv_content = '';
 
-		$line = array(
-			$membership->ID,
-			$package_name,
-			$reciever_name,
-			$membership->activated == 1 ? 'true' : 'false',
-			$membership->issue_time,
-			$membership->activation_time ?? '/',
-			$membership->expiry_time ?? '/',
-			$usages_left ?? '/',
-			$membership->valid == 1 ? 'true' : 'false',
-		);
-		fputcsv( $csv, $line );
-	}
+    // Headers
+    $headers = array(
+        'ID',
+        'Package Name',
+        'Reciever Display Name',
+        'Activated',
+        'Time of Issue',
+        'Time of Activation',
+        'Expires on',
+        'Usages left',
+        'Valid',
+    );
 
-	rewind( $csv );
-	$csv_content = stream_get_contents( $csv );
-	fclose( $csv );
+    // Add headers to the CSV content
+    $csv_content .= implode( ',', $headers ) . "\n";
 
-	// Save to uploads
-	$upload_dir = wp_upload_dir();
-	$filename   = 'issued_report_' . time() . '.csv';
-	$filepath   = $upload_dir['path'] . '/' . $filename;
-	$fileurl    = $upload_dir['url'] . '/' . $filename;
+    foreach ( $memberships as $membership ) {
+        $package_name  = get_the_title( intval( $membership->membership_package_id ) );
+        $profile_user  = Direktt_User::get_user_by_subscription_id( $membership->direktt_reciever_user_id );
+        $reciever_name = $profile_user['direktt_display_name'];
 
-	file_put_contents( $filepath, $csv_content );
+        $type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
+        if ( $type === '1' ) { // usage based
+            $max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
+            if ( $max_usage === 0 ) {
+                $usages_left = 'unlimited';
+            } else {
+                $used_count = direktt_membership_get_used_count( $membership->ID );
+                $usages_left = $max_usage - $used_count;
+            }
+        } else {
+            $usages_left = '/';
+        }
+        $max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
 
-	wp_send_json_success( array( 'url' => $fileurl ) );
-	wp_die();
+        $line = array(
+            $membership->ID,
+            $package_name,
+            $reciever_name,
+            $membership->activated == 1 ? 'true' : 'false',
+            $membership->issue_time,
+            $membership->activation_time ?? '/',
+            $membership->expiry_time ?? '/',
+            $usages_left ?? '/',
+            $membership->valid == 1 ? 'true' : 'false',
+        );
+
+        // Add each row to the CSV content
+        $csv_content .= implode( ',', $line ) . "\n";
+    }
+
+    // Save to uploads directory using WP_Filesystem
+    $upload_dir = wp_upload_dir();
+    $filename   = 'issued_report_' . time() . '.csv';
+    $filepath   = $upload_dir['path'] . '/' . $filename;
+    $fileurl    = $upload_dir['url'] . '/' . $filename;
+
+    // Write CSV content to the file using WP_Filesystem
+    if ( ! $wp_filesystem->put_contents( $filepath, $csv_content, FS_CHMOD_FILE ) ) {
+        wp_send_json_error( esc_html__( 'Error saving the file.', 'direktt-membership' ) );
+        wp_die();
+    }
+
+    wp_send_json_success( array( 'url' => $fileurl ) );
+    wp_die();
 }
 
 function handle_direktt_membership_get_used_report() {
-	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'direktt_membership_reports' ) ) {
-		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-cross-sell' ) );
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_membership_reports' ) ) {
+		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-membership' ) );
 		wp_die();
 	}
 
 	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_send_json_error( esc_html__( 'Unauthorized.', 'direktt-cross-sell' ) );
+		wp_send_json_error( esc_html__( 'Unauthorized.', 'direktt-membership' ) );
 		wp_die();
 	}
 
 	if ( ! isset( $_POST['range'] ) ) {
-		wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
+		wp_send_json_error( esc_html__( 'Data error.', 'direktt-membership' ) );
 		wp_die();
 	}
 
 	global $wpdb;
 
-	$post_id = intval( $_POST['post_id'] );
-	$range   = sanitize_text_field( $_POST['range'] );
-
-	$issued_table   = $wpdb->prefix . 'direktt_membership_issued';
-	$used_table = $wpdb->prefix . 'direktt_membership_used';
+	$post_id       = isset( $_POST['post_id'] ) ? intval( wp_unslash( $_POST['post_id'] ) ) : 0;
+	$range         = sanitize_text_field( wp_unslash( $_POST['range'] ) );
+	$issued_table  = $wpdb->prefix . 'direktt_membership_issued';
+	$used_table    = $wpdb->prefix . 'direktt_membership_used';
 
 	if ( in_array( $range, array( '7', '30', '90' ), true ) ) {
 		$days           = intval( $range );
 		$date_condition = $wpdb->prepare( 'usage_time >= DATE_SUB(NOW(), INTERVAL %d DAY)', $days );
 	} elseif ( $range === 'custom' ) {
 		if ( ! isset( $_POST['from'], $_POST['to'] ) ) {
-			wp_send_json_error( esc_html__( 'Data error.', 'direktt-cross-sell' ) );
+			wp_send_json_error( esc_html__( 'Data error.', 'direktt-membership' ) );
 			wp_die();
 		}
-		$from           = sanitize_text_field( $_POST['from'] );
-		$to             = sanitize_text_field( $_POST['to'] );
+		$from           = sanitize_text_field( wp_unslash( $_POST['from'] ) );
+		$to             = sanitize_text_field( wp_unslash( $_POST['to'] ) );
 		$date_condition = $wpdb->prepare( 'usage_time BETWEEN %s AND %s', $from, $to );
 	}
 
 	// --- Used ---
-	$query  = "SELECT * FROM {$used_table} WHERE {$date_condition}";
-	$usages = $wpdb->get_results( $wpdb->prepare( $query ) );
+	$usages = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $used_table WHERE $date_condition" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
-	// --- CSV ---
-	$csv = fopen( 'php://temp', 'r+' );
+	// Justifications for phpcs ignores:
+	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $used_table is built from $wpdb->prefix + literal string, $date_condition is built from literal string + sanitized inputs.
+	// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+	// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
+
+	if ( empty( $usages ) ) {
+		wp_send_json_error( esc_html__( 'No usage data found.', 'direktt-membership' ) );
+		wp_die();
+	}
+
+	// --- Prepare CSV Content (in memory) ---
+	$csv_content = '';
 
 	$headers = array(
 		'ID',
@@ -1060,27 +1094,30 @@ function handle_direktt_membership_get_used_report() {
 		'Reciever Display Name',
 		'Validator Display Name',
 	);
-	fputcsv( $csv, $headers );
 
-	// Add results
+	// Add headers
+	$csv_content .= implode( ',', $headers ) . "\n";
+
+	// Add usage rows
 	foreach ( $usages as $usage ) {
-		$issued_record = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $issued_table WHERE ID = %d",
-				intval( $usage->issued_id )
-			)
-		);
+		$issued_record = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", intval( $usage->issued_id ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		// Justifications for phpcs ignores:
+		// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+		// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_row() is the official WordPress method for this.
+		// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
+
 		if ( ! $issued_record ) {
 			continue;
 		}
 
 		$package_name = get_the_title( intval( $issued_record->membership_package_id ) );
 
-		$profile_user_reciever = Direktt_User::get_user_by_subscription_id( $usage->direktt_reciever_user_id );
+		$profile_user_reciever = Direktt_User::get_user_by_subscription_id( $issued_record->direktt_reciever_user_id );
 		$reciever_name         = $profile_user_reciever['direktt_display_name'];
 
-		$profile_user_validatior = Direktt_User::get_user_by_subscription_id( $usage->direktt_validator_user_id );
-		$validator_name          = $profile_user_validatior['direktt_display_name'];
+		$profile_user_validator = Direktt_User::get_user_by_subscription_id( $usage->direktt_validator_user_id );
+		$validator_name         = $profile_user_validator['direktt_display_name'];
 
 		$line = array(
 			$usage->ID,
@@ -1089,20 +1126,32 @@ function handle_direktt_membership_get_used_report() {
 			$reciever_name,
 			$validator_name,
 		);
-		fputcsv( $csv, $line );
+
+		$csv_content .= implode( ',', $line ) . "\n";
 	}
 
-	rewind( $csv );
-	$csv_content = stream_get_contents( $csv );
-	fclose( $csv );
+	// --- Prepare to save with WP_Filesystem ---
+	if ( ! function_exists( 'get_filesystem_method' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+	}
 
-	// Save to uploads
+	global $wp_filesystem;
+	if ( ! is_object( $wp_filesystem ) ) {
+		WP_Filesystem();
+	}
+
 	$upload_dir = wp_upload_dir();
 	$filename   = 'used_report_' . time() . '.csv';
 	$filepath   = $upload_dir['path'] . '/' . $filename;
 	$fileurl    = $upload_dir['url'] . '/' . $filename;
 
-	file_put_contents( $filepath, $csv_content );
+	// Save file using WP_Filesystem
+	$write_success = $wp_filesystem->put_contents( $filepath, $csv_content, FS_CHMOD_FILE );
+
+	if ( ! $write_success ) {
+		wp_send_json_error( esc_html__( 'Failed to save report file.', 'direktt-membership' ) );
+		wp_die();
+	}
 
 	wp_send_json_success( array( 'url' => $fileurl ) );
 	wp_die();
@@ -1117,7 +1166,7 @@ function save_direktt_membership_package_meta( $post_id ) {
 		return;
 	}
 
-	if ( ! isset( $_POST['direktt_membership_nonce'] ) || ! wp_verify_nonce( $_POST['direktt_membership_nonce'], 'direktt_membership_save' ) ) {
+	if ( ! isset( $_POST['direktt_membership_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['direktt_membership_nonce'] ) ), 'direktt_membership_save' ) ) {
 		return;
 	}
 
@@ -1129,7 +1178,7 @@ function save_direktt_membership_package_meta( $post_id ) {
 		update_post_meta(
 			$post_id,
 			'direktt_membership_package_type',
-			sanitize_text_field( $_POST['direktt_membership_package_type'] )
+			sanitize_text_field( wp_unslash( $_POST['direktt_membership_package_type'] ) )
 		);
 	}
 
@@ -1153,9 +1202,12 @@ function save_direktt_membership_package_meta( $post_id ) {
 function direktt_membership_get_used_count( $issue_id ) {
 	global $wpdb;
 	$used_table = $wpdb->prefix . 'direktt_membership_used';
-	$used_count = (int) $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT COUNT(*) FROM $used_table WHERE issued_id = %s",
+		$used_count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $used_table WHERE issued_id = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			// Justifications for phpcs ignores:
+			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $used_table is built from $wpdb->prefix + literal string.
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_var() is the official WordPress method for this.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 			$issue_id
 		)
 	);
@@ -1193,17 +1245,17 @@ function direktt_membership_setup_profile_tool() {
 }
 
 function direktt_membership_render_profile_tool() {
-	if ( isset( $_GET['success_flag'] ) && $_GET['success_flag'] === '1' ) {
+	if ( isset( $_GET['success_flag'] ) && $_GET['success_flag'] === '1' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
 		echo '<div class="notice"><p>' . esc_html__( 'Membership package assigned successfully.', 'direktt-membership' ) . '</p></div>';
 	}
-	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) {
-		direktt_membership_render_view_details( sanitize_text_field( $_GET['id'] ) );
+	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, action based router for content rendering.
+		direktt_membership_render_view_details( isset( $_GET['id'] ) ? sanitize_text_field( wp_unslash( $_GET['id'] ) ) : '' ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
 		$back_url = remove_query_arg( array( 'action', 'id', 'success_flag_activate', 'success_flag_invalidate', 'success_flag_record_usage' ) );
 		echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
 		return;
 	}
-	direktt_membership_render_assign_membership_packages();
-	direktt_membership_render_membership_packages( sanitize_text_field( $_GET['subscriptionId'] ) );
+	direktt_membership_render_assign_membership_packages( isset( $_GET['subscriptionId'] ) ? sanitize_text_field( wp_unslash( $_GET['subscriptionId'] ) ) : '' ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
+	direktt_membership_render_membership_packages( isset( $_GET['subscriptionId'] ) ? sanitize_text_field( wp_unslash( $_GET['subscriptionId'] ) ) : '' ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
 }
 
 function direktt_membership_render_membership_packages( $subscription_id ) {
@@ -1423,7 +1475,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 	<?php
 }
 
-function direktt_membership_render_assign_membership_packages() {
+function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 	$args = array(
 		'post_type'      => 'direkttmpackages',
 		'post_status'    => array( 'publish' ),
@@ -1436,7 +1488,6 @@ function direktt_membership_render_assign_membership_packages() {
 
 	global $direktt_user;
 	$subscription_id = $direktt_user['direktt_user_id'];
-	$reciever_id     = sanitize_text_field( $_GET['subscriptionId'] );
 
 	echo '<div id="direktt-assign-membership-packages-wrapper">';
 	echo '<h3>' . esc_html__( 'Assign Membership Packages', 'direktt-membership' ) . '</h3>';
@@ -1471,7 +1522,7 @@ function direktt_membership_render_assign_membership_packages() {
 			}
 
 			echo '<tr>';
-				echo '<td class="direktt-membership-package-name"><strong>' . $package_name . '</strong></td>';
+				echo '<td class="direktt-membership-package-name"><strong>' . esc_html( $package_name ) . '</strong></td>';
 				echo '<td class="direktt-membership-package-type">' . ( $type === '0' ? esc_html__( 'Time Based', 'direktt-membership' ) : esc_html__( 'Usage Based', 'direktt-membership' ) ) . '</td>';
 				echo '<td class="direktt-membership-package-validity">' . ( $type === '0' ? esc_html( $validity ) . esc_html__( ' day(s)', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
 				echo '<td class="direktt-membership-package-max-usage">' . ( $type === '1' ? esc_html( $max_usage ) . esc_html__( ' usage(s)', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
@@ -1483,9 +1534,10 @@ function direktt_membership_render_assign_membership_packages() {
 			echo '</tr>';
 		}
 		echo '</tbody></table>';
-		echo Direktt_Public::direktt_render_confirm_popup( 'direktt-assign-membership-package-confirm', __( 'Are you sure you want to assign this membership package?', 'direktt-membership' ) );
-		echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-alert', '' );
-		echo Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) );
+		$allowed_html = wp_kses_allowed_html( 'post' );
+		echo wp_kses( Direktt_Public::direktt_render_confirm_popup( 'direktt-assign-membership-package-confirm', __( 'Are you sure you want to assign this membership package?', 'direktt-membership' ) ), $allowed_html );
+		echo wp_kses( Direktt_Public::direktt_render_alert_popup( 'direktt-membership-alert', '' ), $allowed_html );
+		echo wp_kses( Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) ), $allowed_html );
 		wp_nonce_field( 'direktt_assign_membership_package_nonce', 'direktt_assign_membership_package_nonce_field' );
 		?>
 		<script>
@@ -1516,7 +1568,7 @@ function direktt_membership_render_assign_membership_packages() {
 						},
 						success: function( response ) {
 							if ( response.success ) {
-								window.location.href = '<?php echo add_query_arg( 'success_flag', '1' ); ?>';
+								window.location.href = '<?php echo esc_url_raw( add_query_arg( 'success_flag', '1' ) ); ?>';
 							} else {
 								$( '#direktt-membership-alert' ).addClass( 'direktt-popup-on' );
 								$( '#direktt-membership-alert .direktt-popup-text' ).text( response.data );
@@ -1548,7 +1600,7 @@ function direktt_membership_render_assign_membership_packages() {
 }
 
 function handle_direktt_assign_membership_package() {
-	if ( isset( $_POST['nonce'], $_POST['package_id'], $_POST['assigner_id'] ) ) {
+	if ( isset( $_POST['nonce'], $_POST['package_id'], $_POST['assigner_id'], $_POST['reciever_id'] ) ) {
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_assign_membership_package_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
 			wp_die();
@@ -1571,12 +1623,12 @@ function handle_direktt_assign_membership_package() {
 		$activated = $type === '1' ? 1 : 0;
 		$guid      = wp_generate_uuid4();
 
-		$inserted = $wpdb->insert(
+		$inserted = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct database insert is required here to add a record to a custom plugin table; $wpdb->insert() is the official safe WordPress method using prepared statements and proper data escaping.
 			$table,
 			array(
 				'membership_package_id'    => (string) $package_id,
 				'direktt_assigner_user_id' => $assigner_id,
-				'direktt_receiver_user_id' => $reciever_id,
+				'direktt_reciever_user_id' => $reciever_id,
 				'membership_guid'          => $guid,
 				'activated'                => $activated,
 			),
@@ -1626,11 +1678,12 @@ function direktt_get_all_user_memberships( $subscription_id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	$memberships = $wpdb->get_results(
-		$wpdb->prepare(
-			"SELECT * FROM $issued_table 
-			WHERE direktt_receiver_user_id = %s 
-			ORDER BY valid DESC, activated DESC",
+	$memberships = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $issued_table WHERE direktt_reciever_user_id = %s ORDER BY valid DESC, activated DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			// Justifications for phpcs ignores:
+			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 			$subscription_id
 		)
 	);
@@ -1666,9 +1719,12 @@ function direktt_get_active_user_memberships( $subscription_id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	$memberships = $wpdb->get_results(
-		$wpdb->prepare(
-			"SELECT * FROM $issued_table WHERE direktt_receiver_user_id = %s AND activated = 1 AND valid = 1 ORDER BY activated DESC",
+	$memberships = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $issued_table WHERE direktt_reciever_user_id = %s AND activated = 1 AND valid = 1 ORDER BY activated DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			// Justifications for phpcs ignores:
+			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 			$subscription_id
 		)
 	);
@@ -1707,9 +1763,12 @@ function direktt_membership_render_view_details( $id ) {
 	global $direktt_user;
 	$subscription_id = $direktt_user['direktt_user_id'];
 
-	$membership = $wpdb->get_row(
-		$wpdb->prepare(
-			"SELECT * FROM $issued_table WHERE ID = %d",
+	$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			// Justifications for phpcs ignores:
+			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 			intval( $id )
 		)
 	);
@@ -1717,20 +1776,20 @@ function direktt_membership_render_view_details( $id ) {
 	if ( ! $membership ) {
 		echo '<div class="notice notice-error"><p>' . esc_html__( 'Membership not found.', 'direktt-membership' ) . '</p></div>';
 	} else {
-		if ( isset( $_GET['success_flag_activate'] ) ) {
-			$success_flag_activate = sanitize_text_field( wp_unslash( $_GET['success_flag_activate'] ) );
+		if ( isset( $_GET['success_flag_activate'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
+			$success_flag_activate = sanitize_text_field( wp_unslash( $_GET['success_flag_activate'] ) ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
 			if ( $success_flag_activate === '1' ) {
 				echo '<div class="notice"><p>' . esc_html__( 'Membership activated successfully.', 'direktt-membership' ) . '</p></div>';
 			}
 		}
-		if ( isset( $_GET['success_flag_invalidate'] ) ) {
-			$success_flag_invalidate = sanitize_text_field( wp_unslash( $_GET['success_flag_invalidate'] ) );
+		if ( isset( $_GET['success_flag_invalidate'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
+			$success_flag_invalidate = sanitize_text_field( wp_unslash( $_GET['success_flag_invalidate'] ) ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
 			if ( $success_flag_invalidate === '1' ) {
 				echo '<div class="notice"><p>' . esc_html__( 'Membership invalidated successfully.', 'direktt-membership' ) . '</p></div>';
 			}
 		}
-		if ( isset( $_GET['success_flag_record_usage'] ) ) {
-			$success_flag_record_usage = sanitize_text_field( wp_unslash( $_GET['success_flag_record_usage'] ) );
+		if ( isset( $_GET['success_flag_record_usage'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
+			$success_flag_record_usage = sanitize_text_field( wp_unslash( $_GET['success_flag_record_usage'] ) ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
 			if ( $success_flag_record_usage === '1' ) {
 				echo '<div class="notice"><p>' . esc_html__( 'Membership used successfully.', 'direktt-membership' ) . '</p></div>';
 			}
@@ -1795,8 +1854,9 @@ function direktt_membership_render_view_details( $id ) {
 									?>
 									<button class="button" id="direktt-membership-activate"><?php echo esc_html__( 'Activate Membership', 'direktt-membership' ); ?> </button>
 									<?php
-									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-activate-confirm', __( 'Are you sure you want to activate this membership?', 'direktt-membership' ) );
-									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-activate-alert', '' );
+									$allowed_html = wp_kses_allowed_html( 'post' );
+									echo wp_kses( Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-activate-confirm', __( 'Are you sure you want to activate this membership?', 'direktt-membership' ) ), $allowed_html );
+									echo wp_kses( Direktt_Public::direktt_render_alert_popup( 'direktt-membership-activate-alert', '' ), $allowed_html );
 									?>
 									<script>
 									jQuery( document ).ready( function($) {
@@ -1864,9 +1924,10 @@ function direktt_membership_render_view_details( $id ) {
 								?>
 								<button class="button button-red button" id="direktt-membership-invalidate"><?php echo esc_html__( 'Invalidate Membership', 'direktt-membership' ); ?> </button>
 								<?php
-								echo Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) );
-								echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) );
-								echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' );
+								$allowed_html = wp_kses_allowed_html( 'post' );
+								echo wp_kses( Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) ), $allowed_html );
+								echo wp_kses( Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) ), $allowed_html );
+								echo wp_kses( Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' ), $allowed_html );
 								?>
 								<script>
 									jQuery( document ).ready( function($) {
@@ -1972,8 +2033,9 @@ function direktt_membership_render_view_details( $id ) {
 									?>
 									<button class="button" id="direktt-membership-record-usage"><?php echo esc_html__( 'Record Usage', 'direktt-membership' ); ?> </button>
 									<?php
-									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-record-usage-confirm', __( 'Are you sure you want to record usage for this membership?', 'direktt-membership' ) );
-									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-record-usage-alert', '' );
+									$allowed_html = wp_kses_allowed_html( 'post' );
+									echo wp_kses( Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-record-usage-confirm', __( 'Are you sure you want to record usage for this membership?', 'direktt-membership' ) ), $allowed_html );
+									echo wp_kses( Direktt_Public::direktt_render_alert_popup( 'direktt-membership-record-usage-alert', '' ), $allowed_html );
 									?>
 									<script>
 									jQuery( document ).ready( function($) {
@@ -2029,9 +2091,10 @@ function direktt_membership_render_view_details( $id ) {
 									</script>
 									<button class="button button-red button" id="direktt-membership-invalidate"><?php echo esc_html__( 'Invalidate Membership', 'direktt-membership' ); ?> </button>
 									<?php
-									echo Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) );
-									echo Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) );
-									echo Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' );
+									$allowed_html = wp_kses_allowed_html( 'post' );
+									echo wp_kses( Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) ), $allowed_html );
+									echo wp_kses( Direktt_Public::direktt_render_confirm_popup( 'direktt-membership-invalidate-confirm', __( 'Are you sure you want to invalidate this membership?', 'direktt-membership' ) ), $allowed_html );
+									echo wp_kses( Direktt_Public::direktt_render_alert_popup( 'direktt-membership-invalidate-alert', '' ), $allowed_html );
 									?>
 									<script>
 										jQuery( document ).ready( function($) {
@@ -2113,9 +2176,12 @@ function handle_direktt_activate_membership() {
 
 		$issued_id = intval( wp_unslash( $_POST['issued_id'] ) );
 
-		$membership = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $issued_table WHERE ID = %d",
+		$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+				// Justifications for phpcs ignores:
+				// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+				// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+				// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 				$issued_id
 			)
 		);
@@ -2134,8 +2200,12 @@ function handle_direktt_activate_membership() {
 
 		$activation_time = current_time( 'mysql' );
 		$validity        = intval( get_post_meta( $package_id, 'direktt_membership_package_validity', true ) );
-		$expiry_time     = $validity > 0 ? date( 'Y-m-d H:i:s', strtotime( $activation_time . ' + ' . $validity . ' days' ) ) : null;
-		$updated = $wpdb->update(
+		$expiry_time     = $validity > 0 ? gmdate( 'Y-m-d H:i:s', strtotime( $activation_time . ' + ' . $validity . ' days' ) ) : null;
+		$updated = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			// Justifications for phpcs ignores:
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct database update is required for this custom plugin table; $wpdb->update() safely uses prepared statements.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not needed because we want to update the table immediately with live data.
 			$issued_table,
 			array(
 				'activated'       => 1,
@@ -2157,7 +2227,7 @@ function handle_direktt_activate_membership() {
 			$membership_admin_activation          = get_option( 'direktt_membership_admin_activation', 'no' ) === 'yes';
 			$membership_admin_activation_template = intval( get_option( 'direktt_membership_admin_activation_template', 0 ) );
 
-			$reciever_id = $membership->direktt_receiver_user_id;
+			$reciever_id = $membership->direktt_reciever_user_id;
 
 			if ( $membership_user_activation && $membership_user_activation_template !== 0 ) {
 				Direktt_Message::send_message_template(
@@ -2194,9 +2264,12 @@ function handle_direktt_invalidate_membership() {
 
 		$issued_id = intval( wp_unslash( $_POST['issued_id'] ) );
 
-		$membership = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $issued_table WHERE ID = %d",
+		$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+				// Justifications for phpcs ignores:
+				// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+				// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_row() is the official WordPress method for this.
+				// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 				$issued_id
 			)
 		);
@@ -2211,7 +2284,11 @@ function handle_direktt_invalidate_membership() {
 			wp_die();
 		}
 
-		$updated = $wpdb->update(
+		$updated = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			// Justifications for phpcs ignores:
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct database update is required for this custom plugin table; $wpdb->update() safely uses prepared statements.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not needed because we want to update the table immediately with live data.
 			$issued_table,
 			array(
 				'valid' => 0,
@@ -2245,9 +2322,12 @@ function handle_direktt_record_membership_usage() {
 		$issued_id = intval( wp_unslash( $_POST['issued_id'] ) );
 		$subscription_id = sanitize_text_field( wp_unslash( $_POST['subscription_id'] ) );
 
-		$membership = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $issued_table WHERE ID = %d",
+		$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d",// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+				// Justifications for phpcs ignores:
+				// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+				// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_row() is the official WordPress method for this.
+				// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 				$issued_id
 			)
 		);
@@ -2279,7 +2359,7 @@ function handle_direktt_record_membership_usage() {
 		}
 		$usage_time = current_time( 'mysql' );
 
-		$inserted = $wpdb->insert(
+		$inserted = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct database insert is required here to add a record to a custom plugin table; $wpdb->insert() is the official safe WordPress method using prepared statements and proper data escaping.
 			$usage_table,
 			array(
 				'issued_id'                 => $issued_id,
@@ -2299,7 +2379,7 @@ function handle_direktt_record_membership_usage() {
 			$membership_admin_usage          = get_option( 'direktt_membership_admin_usage', 'no' ) === 'yes';
 			$membership_admin_usage_template = intval( get_option( 'direktt_membership_admin_usage_template', 0 ) );
 
-			$reciever_id = $membership->direktt_receiver_user_id;
+			$reciever_id = $membership->direktt_reciever_user_id;
 
 			if ( $membership_user_usage && $membership_user_usage_template !== 0 ) {
 				Direktt_Message::send_message_template(
@@ -2332,7 +2412,8 @@ function direktt_membership_enqueue_fe_scripts() {
 			'qr-code-styling', // Handle
 			plugin_dir_url( __FILE__ ) . 'assets/js/qr-code-styling.js', // Source
 			array(), // Dependencies (none in this case)
-			null,
+			filetime( plugin_dir_path( __FILE__ ) . 'assets/js/qr-code-styling.js' ), // Version based on file modification time
+			true // Load in the footer
 		);
 	}
 }
@@ -2351,206 +2432,128 @@ function direktt_membership_tool_shortcode() {
 		return ob_get_clean();
 	}
 
-	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) {
+	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, just an action based router for content rendering.
 		global $enqueue_direktt_member_scripts;
 		$enqueue_direktt_member_scripts = true;
-		$id = intval( $_GET['id'] );
-		ob_start();
-		echo '<div id="direktt-profile-wrapper">';
-		echo '<div id="direktt-profile">';
-		echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
-		global $wpdb;
-		$issued_table = $wpdb->prefix . 'direktt_membership_issued';
+		$id = isset( $_GET['id'] ) ? intval( $_GET['id'] ) : 0; //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, just an action based router for content rendering.
+		return direktt_membership_render_view_details_shortcode( $id );
+	}
 
-		global $direktt_user;
-		$subscription_id = $direktt_user['direktt_user_id'];
+	ob_start();
+	echo '<div id="direktt-profile-wrapper">';
+	echo '<div id="direktt-profile">';
+	echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
+	direktt_membership_render_membership_packages( $direktt_user['direktt_user_id'] );
+	echo '</div>';
+	echo '</div>';
+	echo '</div>';
+	return ob_get_clean();
+}
 
-		$membership = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $issued_table WHERE ID = %d",
-				intval( $id )
-			)
-		);
+function direktt_membership_render_view_details_shortcode( $id ) {
+	ob_start();
+	echo '<div id="direktt-profile-wrapper">';
+	echo '<div id="direktt-profile">';
+	echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
+	global $wpdb;
+	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-		if ( ! $membership ) {
-			echo '<div class="notice notice-error"><p>' . esc_html__( 'Membership not found.', 'direktt-membership' ) . '</p></div>';
-		} else {
-			$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
+	global $direktt_user;
+	$subscription_id = $direktt_user['direktt_user_id'];
 
-			$qr_code_image    = get_option( 'direktt_membership_qr_code_image', '' );
-			$qr_code_color    = get_option( 'direktt_membership_qr_code_color', '#000000' );
-			$qr_code_bg_color = get_option( 'direktt_membership_qr_code_bg_color', '#ffffff' );
+	$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
-			$validation_slug = get_option( 'direktt_membership_validation_slug', '' );
-			$validation_url  = site_url( $validation_slug, 'https' );
-			if ( $type === '0' ) {
-				?>
-				<table>
-					<thead>
-						<tr>
-							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
-							<td><?php echo $membership->activated ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
-							<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
-							<td>
-								<?php
-								if ( $membership->activation_time ) {
-									$activation_time = strtotime( $membership->activation_time );
-									$current_time = strtotime( current_time( 'mysql' ) );
-									echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+			// Justifications for phpcs ignores:
+			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
+			intval( $id )
+		)
+	);
+
+	if ( ! $membership ) {
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'Membership not found.', 'direktt-membership' ) . '</p></div>';
+	} else {
+		$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
+
+		$qr_code_image    = get_option( 'direktt_membership_qr_code_image', '' );
+		$qr_code_color    = get_option( 'direktt_membership_qr_code_color', '#000000' );
+		$qr_code_bg_color = get_option( 'direktt_membership_qr_code_bg_color', '#ffffff' );
+
+		$validation_slug = get_option( 'direktt_membership_validation_slug', '' );
+		$validation_url  = site_url( $validation_slug, 'https' );
+		if ( $type === '0' ) {
+			?>
+			<table>
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Active', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
+						<td><?php echo $membership->activated ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+						<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+						<td>
+							<?php
+							if ( $membership->activation_time ) {
+								$activation_time = strtotime( $membership->activation_time );
+								$current_time = strtotime( current_time( 'mysql' ) );
+								echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
+							} else {
+								echo esc_html( '/' );
+							}
+							?>
+						</td>
+						<td>
+							<?php
+							if ( $membership->expiry_time ) {
+								$expiry_time  = strtotime( $membership->expiry_time );
+								$current_time = strtotime( current_time( 'mysql' ) );
+
+								if ( $expiry_time > $current_time ) {
+									echo esc_html__( 'in ', 'direktt-membership' ) . esc_html( human_time_diff( $current_time, $expiry_time ) );
 								} else {
-									echo esc_html( '/' );
+									echo esc_html__( 'expired ', 'direktt-membership' ) . esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 								}
+							} else {
+								echo esc_html( '/' );
+							}
+							?>
+						</td>
+						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+					</tr>
+					<tr>
+						<td colspan="6">
+							<?php
+							if ( ! $membership->valid ) {
 								?>
-							</td>
-							<td>
+								<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
 								<?php
-								if ( $membership->expiry_time ) {
-									$expiry_time  = strtotime( $membership->expiry_time );
-									$current_time = strtotime( current_time( 'mysql' ) );
-
-									if ( $expiry_time > $current_time ) {
-										echo esc_html__( 'in ', 'direktt-membership' ) . esc_html( human_time_diff( $current_time, $expiry_time ) );
-									} else {
-										echo esc_html__( 'expired ', 'direktt-membership' ) . esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
-									}
-								} else {
-									echo esc_html( '/' );
-								}
-								?>
-							</td>
-							<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
-						</tr>
-						<tr>
-							<td colspan="6">
-								<?php
-								if ( ! $membership->valid ) {
+							} else {
+								if ( ! ( strtotime( $membership->expiry_time ) < strtotime( current_time( 'mysql' ) ) ) ) {
 									?>
-									<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
+									<div class="notice"><p><?php echo esc_html__( 'This membership is currently active.', 'direktt-membership' ); ?></p></div>
 									<?php
 								} else {
-									if ( ! ( strtotime( $membership->expiry_time ) < strtotime( current_time( 'mysql' ) ) ) ) {
-										?>
-										<div class="notice"><p><?php echo esc_html__( 'This membership is currently active.', 'direktt-membership' ); ?></p></div>
-										<?php
-									} else {
-										if ( ! $membership->activated ) {
-											$actionObject = json_encode(
-												array(
-													'action' => array(
-														'type'    => 'link',
-														'params'  => array(
-															'url'    => $validation_url,
-															'target' => 'app',
-														),
-														'retVars' => array(
-															'membership_guid' => $membership->membership_guid,
-														),
-													),
-												)
-											);
-											?>
-											<div id="direktt-membership-qr-code-canvas"></div>
-											<script type="text/javascript">
-												const qrCode = new QRCodeStyling({
-													width: 350,
-													height: 350,
-													type: "svg",
-													data: '<?php echo $actionObject; ?>',
-													image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
-													dotsOptions: {
-														color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
-														type: "rounded"
-													},
-													backgroundOptions: {
-														color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
-													},
-													imageOptions: {
-														crossOrigin: "anonymous",
-														margin: 20
-													}
-												});
-
-												qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
-											</script>
-											<?php
-										} else {
-											?>
-											<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has expired.', 'direktt-membership' ); ?></p></div>
-											<?php
-										}
-									}
-								}
-								?>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<?php
-			} else {
-				?>
-				<table>
-					<thead>
-						<tr>
-							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
-							<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
-							<td>
-								<?php
-								$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
-								if ( ! $max_usage ) {
-									$max_usage = 0;
-								}
-								if ( $max_usage === 0 ) {
-									echo esc_html__( 'Unlimited', 'direktt-membership' );
-								} else {
-									$max_usage = intval( $max_usage );
-									$used_count = direktt_membership_get_used_count( intval( $id ) );
-									$usages_left = $max_usage - $used_count;
-									echo esc_html( $usages_left );
-								}
-								?>
-							</td>
-							<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
-						</tr>
-						<tr>
-							<td colspan="4">
-								<?php
-								if ( ! $membership->valid ) {
-									?>
-									<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
-									<?php
-								} else {
-									if ( $usages_left > 0 || $max_usage === 0 ) {
-										$actionObject = json_encode(
-											array(
-												'action' => array(
-													'type'    => 'link',
-													'params'  => array(
-														'url'    => $validation_url,
-														'target' => 'app',
-													),
-													'retVars' => array(
-														'membership_guid' => $membership->membership_guid,
-													),
+									if ( ! $membership->activated ) {
+										$actionObject = array(
+											'action' => array(
+												'type'    => 'link',
+												'params'  => array(
+													'url'    => $validation_url,
+													'target' => 'app',
 												),
-											)
+												'retVars' => array(
+													'membership_guid' => $membership->membership_guid,
+												),
+											),
 										);
 										?>
 										<div id="direktt-membership-qr-code-canvas"></div>
@@ -2559,7 +2562,7 @@ function direktt_membership_tool_shortcode() {
 												width: 350,
 												height: 350,
 												type: "svg",
-												data: '<?php echo $actionObject; ?>',
+												data: '<?php echo wp_json_encode( $actionObject ); ?>',
 												image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
 												dotsOptions: {
 													color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
@@ -2579,32 +2582,113 @@ function direktt_membership_tool_shortcode() {
 										<?php
 									} else {
 										?>
-										<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has no usages left.', 'direktt-membership' ); ?></p></div>
+										<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has expired.', 'direktt-membership' ); ?></p></div>
 										<?php
 									}
 								}
+							}
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<?php
+		} else {
+			?>
+			<table>
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></td>
+						<td><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></td>
+						<td>
+							<?php
+							$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
+							if ( ! $max_usage ) {
+								$max_usage = 0;
+							}
+							if ( $max_usage === 0 ) {
+								echo esc_html__( 'Unlimited', 'direktt-membership' );
+							} else {
+								$max_usage = intval( $max_usage );
+								$used_count = direktt_membership_get_used_count( intval( $id ) );
+								$usages_left = $max_usage - $used_count;
+								echo esc_html( $usages_left );
+							}
+							?>
+						</td>
+						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+					</tr>
+					<tr>
+						<td colspan="4">
+							<?php
+							if ( ! $membership->valid ) {
 								?>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<?php
-			}
-		}
+								<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
+								<?php
+							} else {
+								if ( $usages_left > 0 || $max_usage === 0 ) {
+									$actionObject = array(
+										'action' => array(
+											'type'    => 'link',
+											'params'  => array(
+												'url'    => $validation_url,
+												'target' => 'app',
+											),
+											'retVars' => array(
+												'membership_guid' => $membership->membership_guid,
+											),
+										),
+									);
+									?>
+									<div id="direktt-membership-qr-code-canvas"></div>
+									<script type="text/javascript">
+										const qrCode = new QRCodeStyling({
+											width: 350,
+											height: 350,
+											type: "svg",
+											data: '<?php echo wp_json_encode( $actionObject ); ?>',
+											image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
+											dotsOptions: {
+												color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
+												type: "rounded"
+											},
+											backgroundOptions: {
+												color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
+											},
+											imageOptions: {
+												crossOrigin: "anonymous",
+												margin: 20
+											}
+										});
 
-		$back_url = remove_query_arg( array( 'action', 'id' ) );
-		echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
-		echo '</div>';
-		echo '</div>';
-		echo '</div>';
-		return ob_get_clean();
+										qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+									</script>
+									<?php
+								} else {
+									?>
+									<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has no usages left.', 'direktt-membership' ); ?></p></div>
+									<?php
+								}
+							}
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<?php
+		}
 	}
 
-	ob_start();
-	echo '<div id="direktt-profile-wrapper">';
-	echo '<div id="direktt-profile">';
-	echo '<div id="direktt-profile-data" class="direktt-profile-data-membership-tool direktt-service">';
-	direktt_membership_render_membership_packages( $direktt_user['direktt_user_id'] );
+	$back_url = remove_query_arg( array( 'action', 'id' ) );
+	echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
 	echo '</div>';
 	echo '</div>';
 	echo '</div>';
@@ -2654,7 +2738,7 @@ function direktt_membership_validation_shortcode() {
 		return ob_get_clean();
 	}
 
-	if ( ! isset( $_GET['membership_guid'] ) || empty( $_GET['membership_guid'] ) ) {
+	if ( ! isset( $_GET['membership_guid'] ) || empty( $_GET['membership_guid'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
 		echo '<div class="notice notice-error"><p>' . esc_html__( 'No membership GUID provided.', 'direktt-membership' ) . '</p></div>';
 		echo '</div>';
 		echo '</div>';
@@ -2663,11 +2747,14 @@ function direktt_membership_validation_shortcode() {
 	}
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
-	$membership_guid = sanitize_text_field( wp_unslash( $_GET['membership_guid'] ) );
+	$membership_guid = sanitize_text_field( wp_unslash( $_GET['membership_guid'] ) ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
 
-	$membership = $wpdb->get_row(
-		$wpdb->prepare(
-			"SELECT * FROM $issued_table WHERE membership_guid = %s",
+	$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE membership_guid = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			// Justifications for phpcs ignores:
+			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
+			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
+			// WordPress.DB.DirectDatabaseQuery.NoCaching: Caching is not used here because we want fresh data each time; object caching is not necessary for this query.
 			$membership_guid
 		)
 	);
