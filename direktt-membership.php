@@ -63,6 +63,9 @@ add_action( 'wp_enqueue_scripts', 'direktt_membership_enqueue_fe_scripts' );
 // Membership validation shortcode
 add_shortcode( 'direktt_membership_validation', 'direktt_membership_validation_shortcode' );
 
+// Highlight submenu when on partner/coupon group edit screen
+add_action( 'parent_file', 'direktt_membership_highlight_submenu' );
+
 function direktt_membership_activation_check() {
 	if (! function_exists('is_plugin_active')) {
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -2778,4 +2781,17 @@ function direktt_membership_validation_shortcode() {
 	echo '</div>';
 	echo '</div>';
 	return ob_get_clean();
+}
+
+function direktt_membership_highlight_submenu( $parent_file ) {
+	global $submenu_file, $current_screen, $pagenow;
+
+	if ( $pagenow === 'post.php' || $pagenow === 'post-new.php' ) {
+		if ( $current_screen->post_type === 'direkttmpackages' ) {
+			$submenu_file  = 'edit.php?post_type=direkttmpackages';
+			$parent_file = 'direktt-dashboard';
+		}
+	}
+
+	return $parent_file;
 }
