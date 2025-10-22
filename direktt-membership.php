@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Direktt Membership
  * Description: Direktt Membership Plugin
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Direktt
  * Author URI: https://direktt.com/
  * License: GPL2
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$direktt_membership_plugin_version = "1.0.0";
+$direktt_membership_plugin_version = "1.0.1";
 $direktt_membership_github_update_cache_allowed = false;
 
 require_once plugin_dir_path( __FILE__ ) . 'direktt-github-updater/class-direktt-github-updater.php';
