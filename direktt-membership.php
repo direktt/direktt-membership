@@ -13,21 +13,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$direktt_customer_review_plugin_version = "1.0.0";
-$direktt_customer_review_github_update_cache_allowed = false;
+$direktt_membership_plugin_version = "1.0.0";
+$direktt_membership_github_update_cache_allowed = false;
 
 require_once plugin_dir_path( __FILE__ ) . 'direktt-github-updater/class-direktt-github-updater.php';
 
-$direktt_customer_review_plugin_github_updater  = new Direktt_Github_Updater( 
-    $direktt_customer_review_plugin_version, 
-    'direktt-customer-review/direktt-customer-review.php',
-    'https://raw.githubusercontent.com/direktt/direktt-customer-review/master/info.json',
-    'direktt_customer_review_github_updater',
-    $direktt_customer_review_github_update_cache_allowed );
+$direktt_membership_plugin_github_updater  = new Direktt_Github_Updater( 
+    $direktt_membership_plugin_version, 
+    'direktt-membership/direktt-membership.php',
+    'https://raw.githubusercontent.com/direktt/direktt-membership/master/info.json',
+    'direktt_membership_github_updater',
+    $direktt_membership_github_update_cache_allowed );
 
-add_filter( 'plugins_api', array( $direktt_customer_review_plugin_github_updater, 'github_info' ), 20, 3 );
-add_filter( 'site_transient_update_plugins', array( $direktt_customer_review_plugin_github_updater, 'github_update' ));
-add_filter( 'upgrader_process_complete', array( $direktt_customer_review_plugin_github_updater, 'purge'), 10, 2 );
+add_filter( 'plugins_api', array( $direktt_membership_plugin_github_updater, 'github_info' ), 20, 3 );
+add_filter( 'site_transient_update_plugins', array( $direktt_membership_plugin_github_updater, 'github_update' ));
+add_filter( 'upgrader_process_complete', array( $direktt_membership_plugin_github_updater, 'purge'), 10, 2 );
 
 add_action( 'plugins_loaded', 'direktt_membership_activation_check', -20 );
 
