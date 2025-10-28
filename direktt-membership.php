@@ -210,10 +210,10 @@ function direktt_membership_enqueue_scripts( $hook ) {
 		wp_enqueue_script( 'wp-color-picker' );
 		wp_enqueue_script(
 			'qr-code-styling', // Handle
-			plugin_dir_url( __FILE__ ) . 'assets/js/qr-code-styling.js', // Source
+			plugin_dir_url( __DIR__ ) . 'direktt/public/js/qr-code-styling.js', // Source
 			array(), // Dependencies (none in this case)
-			filetime( plugin_dir_path( __FILE__ ) . 'assets/js/qr-code-styling.js' ), // Version based on file modification time
-			true // Load in the footer
+			filetime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
+			false
 		);
 	}
 }
@@ -2429,10 +2429,10 @@ function direktt_membership_enqueue_fe_scripts() {
 	if ( $enqueue_direktt_member_scripts ) {
 		wp_enqueue_script(
 			'qr-code-styling', // Handle
-			plugin_dir_url( __FILE__ ) . 'assets/js/qr-code-styling.js', // Source
+			plugin_dir_url( __DIR__ ) . 'direktt/public/js/qr-code-styling.js', // Source
 			array(), // Dependencies (none in this case)
-			filetime( plugin_dir_path( __FILE__ ) . 'assets/js/qr-code-styling.js' ), // Version based on file modification time
-			true // Load in the footer
+			filetime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
+			false
 		);
 	}
 }
