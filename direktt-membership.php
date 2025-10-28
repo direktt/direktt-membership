@@ -212,7 +212,7 @@ function direktt_membership_enqueue_scripts( $hook ) {
 			'qr-code-styling', // Handle
 			plugin_dir_url( __DIR__ ) . 'direktt/public/js/qr-code-styling.js', // Source
 			array(), // Dependencies (none in this case)
-			filetime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
+			filemtime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
 			false
 		);
 	}
@@ -2431,7 +2431,7 @@ function direktt_membership_enqueue_fe_scripts() {
 			'qr-code-styling', // Handle
 			plugin_dir_url( __DIR__ ) . 'direktt/public/js/qr-code-styling.js', // Source
 			array(), // Dependencies (none in this case)
-			filetime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
+			filemtime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
 			false
 		);
 	}
