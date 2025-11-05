@@ -34,6 +34,8 @@ A powerful WordPress plugin for managing memberships, tightly integrated with th
     - Set up QR Code logo, color and background color, QR Code preview is available.
     - Set up notifications for users and Direktt admin on membership package issuance/activation/usage.
 
+### Membership Packages
+
 - Find **Direktt > Membership Packages**
 - Set up your Membership Packages:
     - Add title of the Membership package.
@@ -46,13 +48,39 @@ A powerful WordPress plugin for managing memberships, tightly integrated with th
         - If Usage based is selected configure:
             - Max Usage - Number of times the membership can be used (0 is unlimited).
 
-### Case Management
+### Assign Membership Package to user
 
-- Add service case via wp-admin/Direktt User profile/shortcode.
-- Set the case title and case description (optional).
-- If you are adding service case via wp-admin or shortcode, you will need to enter user's Subscription ID.
-- Edit service cases via wp-admin/Direktt User profile/shortcode.
-- All actions are logged in the user’s **service status change log**.
+- Access the Direktt user profile.
+- Go to Membership tool subpage.
+- Choose the membership package and click "Assign Membership" button and then confirm.
+- Membership is now assigned to user.
+
+### Activating Time Based Membership Packages
+
+- There are two ways for activation:
+    - From Direktt Profile tool:
+        - Admin accesses the Direktt Profile tool.
+        - Admin finds the Membership Package in the list, and clicks the "View Details" button
+        - Admin clicks the "Activate Membership" button and confirms.
+        - Membership is now activated and expires in number of days set in Package Properties.
+    - From shortcode
+        - User accesses the page with the shortcode for membership tool.
+        - User finds the Membership Package in the list, and clicks the "View Details" button
+        - User shows the QR Code to Admin, Admin scans the code and validation page opens.
+        - Admin clicks the "Activate Membership" button and confirms.
+        - Membership is now activated and expires in number of days set in Package Properties.
+
+### Recording Usage of Usage Based Membership Packages
+
+- lorem ipsum
+
+### Invalidation of Membership Package
+
+- lorem ipsum
+
+### Generating reports
+
+- lorem ipsum
 
 ### Shortcode (Front End)
 
