@@ -311,7 +311,7 @@ function direktt_membership_settings() {
 		<form method="post" action="">
 			<?php wp_nonce_field( 'direktt_admin_membership_save', 'direktt_admin_membership_nonce' ); ?>
 
-			<table class="form-table">
+			<table class="form-table direktt-membership-table">
 				<tr>
 					<th scope="row"><label for="direktt_membership_validation_slug"><?php echo esc_html__( 'Membership Validation Page Slug', 'direktt-membership' ); ?></label></th>
 					<td>
@@ -541,7 +541,7 @@ function direktt_membership_settings() {
                         <input type="checkbox" name="direktt_membership_user_issuance" id="direktt_membership_user_issuance" value="yes" <?php checked( $membership_user_issuance ); ?> />
                     </td>
                 </tr>
-                <tr class="direktt-settings-mt-row">
+                <tr class="direktt-membership-settings-mt-user-issuance-row">
                     <th scope="row"><label for="direktt_membership_user_issuance_template"><?php echo esc_html__( 'Subscriber Message Template on Membership Issuance', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_user_issuance_template" id="direktt_membership_user_issuance_template">
@@ -561,7 +561,7 @@ function direktt_membership_settings() {
                         <input type="checkbox" name="direktt_membership_admin_issuance" id="direktt_membership_admin_issuance" value="yes" <?php checked( $membership_admin_issuance ); ?> />
                     </td>
                 </tr>
-                <tr class="direktt-settings-mt-row">
+                <tr class="direktt-membership-settings-mt-admin-issuance-row">
                     <th scope="row"><label for="direktt_membership_admin_issuance_template"><?php echo esc_html__( 'Admin Message Template on Membership Issuance', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_admin_issuance_template" id="direktt_membership_admin_issuance_template">
@@ -581,7 +581,7 @@ function direktt_membership_settings() {
                         <input type="checkbox" name="direktt_membership_user_activation" id="direktt_membership_user_activation" value="yes" <?php checked( $membership_user_activation ); ?> />
                     </td>
                 </tr>
-                <tr class="direktt-settings-mt-row">
+                <tr class="direktt-membership-settings-mt-user-activation-row">
                     <th scope="row"><label for="direktt_membership_user_activation_template"><?php echo esc_html__( 'Subscriber Message Template on Membership Activation', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_user_activation_template" id="direktt_membership_user_activation_template">
@@ -601,7 +601,7 @@ function direktt_membership_settings() {
                         <input type="checkbox" name="direktt_membership_admin_activation" id="direktt_membership_admin_activation" value="yes" <?php checked( $membership_admin_activation ); ?> />
                     </td>
                 </tr>
-                <tr class="direktt-settings-mt-row">
+                <tr class="direktt-membership-settings-mt-admin-activation-row">
                     <th scope="row"><label for="direktt_membership_admin_activation_template"><?php echo esc_html__( 'Admin Message Template on Membership Activation', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_admin_activation_template" id="direktt_membership_admin_activation_template">
@@ -621,7 +621,7 @@ function direktt_membership_settings() {
                         <input type="checkbox" name="direktt_membership_user_usage" id="direktt_membership_user_usage" value="yes" <?php checked( $membership_user_usage ); ?> />
                     </td>
                 </tr>
-                <tr class="direktt-settings-mt-row">
+                <tr class="direktt-membership-settings-mt-user-usage-row">
                     <th scope="row"><label for="direktt_membership_user_usage_template"><?php echo esc_html__( 'Subscriber Message Template on Membership Usage', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_user_usage_template" id="direktt_membership_user_usage_template">
@@ -641,7 +641,7 @@ function direktt_membership_settings() {
                         <input type="checkbox" name="direktt_membership_admin_usage" id="direktt_membership_admin_usage" value="yes" <?php checked( $membership_admin_usage ); ?> />
                     </td>
                 </tr>
-                <tr class="direktt-settings-mt-row">
+                <tr class="direktt-membership-settings-mt-admin-usage-row">
                     <th scope="row"><label for="direktt_membership_admin_usage_template"><?php echo esc_html__( 'Admin Message Template on Membership Usage', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_admin_usage_template" id="direktt_membership_admin_usage_template">
