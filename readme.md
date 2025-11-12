@@ -72,34 +72,75 @@ A powerful WordPress plugin for managing memberships, tightly integrated with th
 
 ### Recording Usage of Usage Based Membership Packages
 
-- lorem ipsum
+- There are two ways for activation:
+    - From Direktt Profile tool:
+        - Admin accesses the Direktt Profile tool.
+        - Admin finds the Membership Package in the list, and clicks the "View Details" button
+        - Admin clicks the "Record Usage" button and confirms.
+        - Usage is now recorded and number of usages left was deducted by 1.
+    - From shortcode
+        - User accesses the page with the shortcode for membership tool.
+        - User finds the Membership Package in the list, and clicks the "View Details" button
+        - User shows the QR Code to Admin, Admin scans the code and validation page opens.
+        - Admin clicks the "Record Usage" button and confirms.
+        - Usage is now recorded and number of usages left was deducted by 1.
 
 ### Invalidation of Membership Package
 
-- lorem ipsum
+- There are two ways for activation:
+    - From Direktt Profile tool:
+        - Admin accesses the Direktt Profile tool.
+        - Admin finds the Membership Package in the list, and clicks the "View Details" button
+        - Admin clicks the "Invalidate Membership" button and confirms.
+        - Membership is now invalidated and is not active/usage cannot be recorded.
+    - From shortcode
+        - User accesses the page with the shortcode for membership tool.
+        - User finds the Membership Package in the list, and clicks the "View Details" button
+        - User shows the QR Code to Admin, Admin scans the code and validation page opens.
+        - Admin clicks the "Invalidate Membership" button and confirms.
+        - Membership is now invalidated and is not active/usage cannot be recorded.
 
 ### Generating reports
 
-- lorem ipsum
+- Find **Direktt > Settings > Membership Settings** in your WordPress admin menu.
+- On the bottom, you will find section **Generate Membership Reports**
+- There is a "Range" option which can be set to "Last 7 days", "Last 30 days", "Last 90 days" or "Custom date range".
+- Generate Issued Reports:
+    - CSV file is downloaded, containing the next informations:
+        - ID - custom ID from database
+        - Package Name - title of the Membership Package
+        - Reciever Display Name - display name of the subscriber to whom it was issued
+        - Activated - true/false, for time based packages, this will be true if membership was activated, for usage based packages it will always be false
+        - Time of Issue - timestamp when package was issued
+        - Time of Activation - timestamp when package was activated (only for time based packages)
+        - Expires on - timestamp when package expired/will expire (only for time based packages)
+        - Usages left - number of usages left
+        - Valid - true/false, false only if membership package was invalidated, true by default
+- Generate Used Reports (displays only the usage based packages):
+    - CSV file is downloaded, containing the next informations:
+        - ID - custom ID from database
+        - Package Name - title of the Membership Package
+        - Time of Issue - timestamp when package was issued
+        - Reciever Display Name - display name of the subscriber to whom it was issued
+        - Validator Display Name - display name of the user who recorded (validated) usage of the package. 
 
 ### Shortcode (Front End)
 
 Show the all non-closed cases (only to Direktt Admin and users that are able top manage cases) and current user's non-closed cases to Direktt user:
 
-```[direktt_service_case]```
+```[direktt_membership_tool]```
+
+### Shortcode (Validation)
+
+Show the all non-closed cases (only to Direktt Admin and users that are able top manage cases) and current user's non-closed cases to Direktt user:
+
+```[direktt_membership_validation]```
 
 ## Notification Templates
 
 Direktt Message templates support following dynamic placeholders:
 
-- `#case-no#` — title of the service case
-- `#date-time#` — timestamp when case was opened or status was changed
-- `#old-status#` for old status (only for case status change message template)
-- `#new-status#` for new status (only for case status change message template)
-
-## Case Status Change Logs
-
-For every case status creating or change, an entry is made with admin name (not visible to user), subscription id (not visible to usr), old status, new status and timestamp.
+- TODO
 
 ---
 
