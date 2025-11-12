@@ -41,6 +41,9 @@ add_action( 'direktt_setup_settings_pages', 'direktt_membership_setup_settings_p
 // Enqueue admin scripts
 add_action( 'admin_enqueue_scripts', 'direktt_membership_enqueue_scripts' );
 
+// Enqueue front-end scripts for membership tool
+add_action( 'wp_enqueue_scripts', 'direktt_membership_enqueue_fe_scripts' );
+
 // Setup menus
 add_action( 'direktt_setup_admin_menu', 'direktt_membership_setup_menu' );
 
@@ -52,7 +55,7 @@ add_action( 'add_meta_boxes', 'direktt_membership_packages_add_custom_box' );
 add_action( 'save_post', 'save_direktt_membership_package_meta' );
 
 // Reports AJAX handlers
-add_action( 'wp_ajax_direktt_membership_get_issued_report', 'handle_direktt_membership_get_issued_report' );
+add_action( 'wp_ajax_direktt_membership_get_4ssued_report', 'handle_direktt_membership_get_issued_report' );
 add_action( 'wp_ajax_direktt_membership_get_used_report', 'handle_direktt_membership_get_used_report' );
 
 // Membership Profile Tool Setup
@@ -202,9 +205,26 @@ function direktt_membership_setup_settings_page() {
 
 function direktt_membership_enqueue_scripts( $hook ) {
 	if ( $hook === 'direktt_page_direktt-settings' && isset( $_GET['subpage' ] ) && sanitize_text_field( wp_unslash( $_GET['subpage'] ) ) === 'membership' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, subpage based router for enqueuing scripts.
-		wp_enqueue_media();
-		wp_enqueue_style( 'wp-color-picker' );
-		wp_enqueue_script( 'wp-color-picker' );
+		wp_enqueue_script(
+			'qr-code-styling', // Handle
+			plugin_dir_url( __DIR__ ) . 'direktt/public/js/qr-code-styling.js', // Source
+			array(), // Dependencies (none in this case)
+			filemtime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
+			false
+		);
+	}
+}
+
+function direktt_membership_enqueue_fe_scripts() {
+	global $enqueue_direktt_member_scripts;
+	if ( $enqueue_direktt_member_scripts ) {
+		wp_enqueue_script(
+			'qr-code-styling', // Handle
+			plugin_dir_url( __DIR__ ) . 'direktt/public/js/qr-code-styling.js', // Source
+			array(), // Dependencies (none in this case)
+			filemtime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
+			false
+		);
 	}
 }
 
@@ -223,10 +243,6 @@ function direktt_membership_settings() {
 
 		update_option( 'direktt_membership_issue_categories', isset( $_POST['direktt_membership_issue_categories'] ) ? intval( wp_unslash( $_POST['direktt_membership_issue_categories'] ) ) : 0 );
 		update_option( 'direktt_membership_issue_tags', isset( $_POST['direktt_membership_issue_tags'] ) ? intval( wp_unslash( $_POST['direktt_membership_issue_tags'] ) ) : 0 );
-
-		update_option( 'direktt_membership_qr_code_image', isset( $_POST['direktt_membership_qr_code_image'] ) ? esc_url_raw( wp_unslash( $_POST['direktt_membership_qr_code_image'] ) ) : '' );
-		update_option( 'direktt_membership_qr_code_color', isset( $_POST['direktt_membership_qr_code_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['direktt_membership_qr_code_color'] ) ) : '#000000' );
-		update_option( 'direktt_membership_qr_code_bg_color', isset( $_POST['direktt_membership_qr_code_bg_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['direktt_membership_qr_code_bg_color'] ) ) : '#ffffff' );
 
 		update_option( 'direktt_membership_user_issuance', isset( $_POST['direktt_membership_user_issuance'] ) ? 'yes' : 'no' );
         update_option( 'direktt_membership_user_issuance_template', isset( $_POST['direktt_membership_user_issuance_template'] ) ? intval( wp_unslash( $_POST['direktt_membership_user_issuance_template'] ) ) : 0 );
@@ -251,10 +267,6 @@ function direktt_membership_settings() {
 
 	$issue_categories = get_option( 'direktt_membership_issue_categories', 0 );
 	$issue_tags       = get_option( 'direktt_membership_issue_tags', 0 );
-
-	$qr_code_image    = get_option( 'direktt_membership_qr_code_image', '' );
-	$qr_code_color    = get_option( 'direktt_membership_qr_code_color', '#000000' );
-	$qr_code_bg_color = get_option( 'direktt_membership_qr_code_bg_color', '#ffffff' );
 
 	$membership_user_issuance           = get_option( 'direktt_membership_user_issuance', 'no' ) === 'yes';
     $membership_user_issuance_template  = intval( get_option( 'direktt_membership_user_issuance_template', 0 ) );
@@ -335,194 +347,6 @@ function direktt_membership_settings() {
 							<?php endforeach; ?>
 						</select>
 						<p class="description"><?php esc_html_e( 'Users with this tag will be able to Issue/Validate Memberships.', 'direktt-membership' ); ?></p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="direktt_membership_qr_code_image"><?php echo esc_html__( 'QR Code Logo', 'direktt-membership' ); ?></label></th>
-					<td>
-						<input type="text" id="direktt_membership_qr_code_image" name="direktt_membership_qr_code_image" value="<?php echo esc_attr( $qr_code_image ?? '' ); ?>" />
-						<input type="button" id="direktt_membership_qr_code_image_button" class="button" value="<?php echo esc_html__( 'Choose Image', 'direktt-membership' ); ?>" />
-						<p class="description"><?php echo esc_html__( 'Optional Logo/Image to Display at Center of QR Code', 'direktt-membership' ); ?></p>
-						<script>
-							jQuery( document ).ready(function($) {
-								var mediaUploader;
-
-								$( '#direktt_membership_qr_code_image_button' ).click(function(e) {
-									e.preventDefault();
-
-									// If the uploader object has already been created, reopen it
-									if (mediaUploader) {
-										mediaUploader.open();
-										return;
-									}
-
-									// Create the media uploader
-									mediaUploader = wp.media.frames.file_frame = wp.media({
-										title: '<?php echo esc_js( __( 'Choose Image', 'direktt-membership' ) ); ?>',
-										button: {
-											text: '<?php echo esc_js( __( 'Choose Image', 'direktt-membership' ) ); ?>'
-										},
-										multiple: false
-									});
-
-									// When an image is selected, run a callback
-									mediaUploader.on( 'select', function() {
-										var attachment = mediaUploader.state().get( 'selection' ).first().toJSON();
-										$( '#direktt_membership_qr_code_image' ).val( attachment.url );
-										$( '#direktt_membership_qr_code_image' ).trigger( 'change' );
-									});
-
-									// Open the uploader dialog
-									mediaUploader.open();
-								});
-							});
-						</script>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="direktt_membership_qr_code_color"><?php echo esc_html__( 'QR Code Color', 'direktt-membership' ); ?></label></th>
-					<td>
-						<input type="text" id="direktt_membership_qr_code_color" name="direktt_membership_qr_code_color" value="<?php echo esc_attr( $qr_code_color ?? '#000000' ); ?>" />
-						<p class="description"><?php echo esc_html__( 'Optional Color of Dots in the QR Code', 'direktt-membership' ); ?></p>
-						<script>
-							jQuery( document ).ready( function($) {
-								$( '#direktt_membership_qr_code_color' ).wpColorPicker();
-							});
-						</script>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="direktt_membership_qr_code_bg_color"><?php echo esc_html__( 'QR Code Background Color', 'direktt-membership' ); ?></label></th>
-					<td>
-						<input type="text" id="direktt_membership_qr_code_bg_color" name="direktt_membership_qr_code_bg_color" value="<?php echo esc_attr( $qr_code_bg_color ?? '#ffffff' ); ?>" />
-						<p class="description"><?php echo esc_html__( 'Optional Color of the QR Code Background.', 'direktt-membership' ); ?></p>
-						<script>
-							jQuery( document ).ready(function($) {
-								$( '#direktt_membership_qr_code_bg_color' ).wpColorPicker();
-							});
-						</script>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="direktt-membership-qr-code-canvas-wrapper"><?php echo esc_html__( 'QR Code Preview', 'direktt-membership' ); ?></label></th>
-					<td>
-						<div class="direktt-membership-qr-code-canvas-wrapper">
-							<div id="direktt-membership-qr-code-canvas"></div>
-						</div>
-						<?php
-						$actionObject = array(
-							'action' => array(
-								'type'    => 'link',
-								'params'  => array(
-									'url'    => 'direktt.com',
-									'target' => 'browser',
-								),
-								'retVars' => array(),
-							),
-						);
-						?>
-						<script type="text/javascript">
-							const qrCode = new QRCodeStyling({
-								width: 350,
-								height: 350,
-								type: "svg",
-								data: '<?php echo wp_json_encode( $actionObject ); ?>',
-								image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
-								dotsOptions: {
-									color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
-									type: "rounded"
-								},
-								backgroundOptions: {
-									color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
-								},
-								imageOptions: {
-									crossOrigin: "anonymous",
-									margin: 20
-								}
-							});
-
-							qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
-
-							jQuery(document).ready(function($) {
-								$('#direktt_membership_qr_code_image').on('change', function() {
-									var newQrCode = new QRCodeStyling({
-										width: 350,
-										height: 350,
-										type: "svg",
-										data: '<?php echo wp_json_encode( $actionObject ); ?>',
-										image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
-										dotsOptions: {
-											color: $( '#direktt_membership_qr_code_color' ).val() ? $( '#direktt_membership_qr_code_color' ).val() : '#000000',
-											type: "rounded"
-										},
-										backgroundOptions: {
-											color: $( '#direktt_membership_qr_code_bg_color' ).val() ? $( '#direktt_membership_qr_code_bg_color' ).val() : '#ffffff',
-										},
-										imageOptions: {
-											crossOrigin: "anonymous",
-											margin: 20
-										}
-									});
-
-									$( '#direktt-membership-qr-code-canvas' ).empty();
-									newQrCode.append( document.getElementById( "direktt-membership-qr-code-canvas" ) );
-								});
-								$( '#direktt_membership_qr_code_color' ).wpColorPicker({
-									change: function( event, ui ) {
-										let color = ui.color.toString();
-
-										var newQrCode = new QRCodeStyling({
-											width: 350,
-											height: 350,
-											type: "svg",
-											data: '<?php echo wp_json_encode( $actionObject ); ?>',
-											image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
-											dotsOptions: {
-												color: color,
-												type: "rounded"
-											},
-											backgroundOptions: {
-												color: $( '#direktt_membership_qr_code_bg_color' ).val() ? $( '#direktt_membership_qr_code_bg_color' ).val() : '#ffffff',
-											},
-											imageOptions: {
-												crossOrigin: "anonymous",
-												margin: 20
-											}
-										});
-
-										$( '#direktt-membership-qr-code-canvas' ).empty();
-										newQrCode.append( document.getElementById( "direktt-membership-qr-code-canvas" ) );
-									}
-								});
-								$( '#direktt_membership_qr_code_bg_color' ).wpColorPicker({
-									change: function( event, ui ) {
-										let color = ui.color.toString();
-
-										var newQrCode = new QRCodeStyling({
-											width: 350,
-											height: 350,
-											type: "svg",
-											data: '<?php echo wp_json_encode( $actionObject ); ?>',
-											image: $( '#direktt_membership_qr_code_image' ).val() ? $( '#direktt_membership_qr_code_image' ).val() : '',
-											dotsOptions: {
-												color: $( '#direktt_membership_qr_code_color' ).val() ? $( '#direktt_membership_qr_code_color' ).val() : '#000000',
-												type: "rounded"
-											},
-											backgroundOptions: {
-												color: color,
-											},
-											imageOptions: {
-												crossOrigin: "anonymous",
-												margin: 20
-											}
-										});
-
-										$( '#direktt-membership-qr-code-canvas' ).empty();
-										newQrCode.append( document.getElementById( "direktt-membership-qr-code-canvas" ) );
-									}
-								});
-							});
-						</script>
 					</td>
 				</tr>
 				<tr>
@@ -2429,6 +2253,8 @@ function direktt_membership_tool_shortcode() {
 	}
 
 	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, just an action based router for content rendering.
+		global $enqueue_direktt_member_scripts;
+		$enqueue_direktt_member_scripts = true;
 		$id = isset( $_GET['id'] ) ? intval( $_GET['id'] ) : 0; //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, just an action based router for content rendering.
 		return direktt_membership_render_view_details_shortcode( $id );
 	}
@@ -2548,26 +2374,28 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 										?>
 										<div id="direktt-membership-qr-code-canvas"></div>
 										<script type="text/javascript">
-											const qrCode = new QRCodeStyling({
-												width: 350,
-												height: 350,
-												type: "svg",
-												data: '<?php echo wp_json_encode( $actionObject ); ?>',
-												image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
-												dotsOptions: {
-													color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
-													type: "rounded"
-												},
-												backgroundOptions: {
-													color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
-												},
-												imageOptions: {
-													crossOrigin: "anonymous",
-													margin: 20
-												}
-											});
+											document.addEventListener('DOMContentLoaded', function () {
+												const qrCode = new QRCodeStyling({
+													width: 350,
+													height: 350,
+													type: "svg",
+													data: '<?php echo wp_json_encode( $actionObject ); ?>',
+													image: direktt_public.direktt_qr_code_logo_url ? direktt_public.direktt_qr_code_logo_url : '',
+													dotsOptions: {
+														color: direktt_public.direktt_qr_code_color ? direktt_public.direktt_qr_code_color : '#000000',
+														type: "rounded"
+													},
+													backgroundOptions: {
+														color: direktt_public.direktt_qr_code_bckg_color ? direktt_public.direktt_qr_code_bckg_color : '#ffffff',
+													},
+													imageOptions: {
+														crossOrigin: "anonymous",
+														margin: 20
+													}
+												});
 
-											qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+												qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+											});
 										</script>
 										<?php
 									} else {
@@ -2640,26 +2468,28 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 									?>
 									<div id="direktt-membership-qr-code-canvas"></div>
 									<script type="text/javascript">
-										const qrCode = new QRCodeStyling({
-											width: 350,
-											height: 350,
-											type: "svg",
-											data: '<?php echo wp_json_encode( $actionObject ); ?>',
-											image: '<?php echo $qr_code_image ? esc_js( $qr_code_image ) : ''; ?>',
-											dotsOptions: {
-												color: '<?php echo $qr_code_color ? esc_js( $qr_code_color ) : '#000000'; ?>',
-												type: "rounded"
-											},
-											backgroundOptions: {
-												color: '<?php echo $qr_code_bg_color ? esc_js( $qr_code_bg_color ) : '#ffffff'; ?>',
-											},
-											imageOptions: {
-												crossOrigin: "anonymous",
-												margin: 20
-											}
-										});
+										document.addEventListener('DOMContentLoaded', function () {
+											const qrCode = new QRCodeStyling({
+												width: 350,
+												height: 350,
+												type: "svg",
+												data: '<?php echo wp_json_encode( $actionObject ); ?>',
+												image: direktt_public.direktt_qr_code_logo_url ? direktt_public.direktt_qr_code_logo_url : '',
+												dotsOptions: {
+													color: direktt_public.direktt_qr_code_color ? direktt_public.direktt_qr_code_color : '#000000',
+													type: "rounded"
+												},
+												backgroundOptions: {
+													color: direktt_public.direktt_qr_code_bckg_color ? direktt_public.direktt_qr_code_bckg_color : '#ffffff',
+												},
+												imageOptions: {
+													crossOrigin: "anonymous",
+													margin: 20
+												}
+											});
 
-										qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+											qrCode.append(document.getElementById("direktt-membership-qr-code-canvas"));
+										});
 									</script>
 									<?php
 								} else {
