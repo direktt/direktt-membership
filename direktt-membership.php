@@ -73,9 +73,6 @@ add_action( 'wp_ajax_direktt_record_membership_usage', 'handle_direktt_record_me
 // User tool shortcode
 add_shortcode( 'direktt_membership_tool', 'direktt_membership_tool_shortcode' );
 
-// Enqueue front-end scripts for membership tool
-add_action( 'wp_enqueue_scripts', 'direktt_membership_enqueue_fe_scripts' );
-
 // Membership validation shortcode
 add_shortcode( 'direktt_membership_validation', 'direktt_membership_validation_shortcode' );
 
@@ -2424,19 +2421,6 @@ function handle_direktt_record_membership_usage() {
 	}
 }
 
-function direktt_membership_enqueue_fe_scripts() {
-	global $enqueue_direktt_member_scripts;
-	if ( $enqueue_direktt_member_scripts ) {
-		wp_enqueue_script(
-			'qr-code-styling', // Handle
-			plugin_dir_url( __DIR__ ) . 'direktt/public/js/qr-code-styling.js', // Source
-			array(), // Dependencies (none in this case)
-			filemtime( plugin_dir_path( __DIR__ ) . 'direktt/public/js/qr-code-styling.js' ), // Version based on file modification time
-			false
-		);
-	}
-}
-
 function direktt_membership_tool_shortcode() {
 	global $direktt_user;
 	if ( ! $direktt_user ) {
@@ -2452,8 +2436,6 @@ function direktt_membership_tool_shortcode() {
 	}
 
 	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, just an action based router for content rendering.
-		global $enqueue_direktt_member_scripts;
-		$enqueue_direktt_member_scripts = true;
 		$id = isset( $_GET['id'] ) ? intval( $_GET['id'] ) : 0; //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, just an action based router for content rendering.
 		return direktt_membership_render_view_details_shortcode( $id );
 	}
@@ -2494,10 +2476,6 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 		echo '<div class="notice notice-error"><p>' . esc_html__( 'Membership not found.', 'direktt-membership' ) . '</p></div>';
 	} else {
 		$type = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_type', true );
-
-		$qr_code_image    = get_option( 'direktt_membership_qr_code_image', '' );
-		$qr_code_color    = get_option( 'direktt_membership_qr_code_color', '#000000' );
-		$qr_code_bg_color = get_option( 'direktt_membership_qr_code_bg_color', '#ffffff' );
 
 		$validation_slug = get_option( 'direktt_membership_validation_slug', '' );
 		$validation_url  = site_url( $validation_slug, 'https' );
