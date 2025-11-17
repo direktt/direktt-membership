@@ -473,7 +473,7 @@ function direktt_membership_settings() {
 
 			<?php submit_button( esc_html__( 'Save Settings', 'direktt-membership' ) ); ?>
 		</form>
-		<div class="direktt-membership-reports">
+		<div class="direktt-membership-reports form-table">
 			<h2><?php echo esc_html__( 'Generate Membership Reports', 'direktt-membership' ); ?></h2>
 			<table>
 				<?php wp_nonce_field( 'direktt_membership_reports', 'direktt_membership_reports_nonce' ); ?>
@@ -498,10 +498,10 @@ function direktt_membership_settings() {
 				</tr>
 				<tr>
 					<td colspan="2">
-						<p>
+						<div>
 							<button type="button" class="button" id="direktt-generate-issued"><?php echo esc_html__( 'Generate Issued Report', 'direktt-membership' ); ?></button>
 							<button type="button" class="button" id="direktt-generate-used"><?php echo esc_html__( 'Generate Used Report', 'direktt-membership' ); ?></button>
-						</p>
+						</div>
 
 						<script>
 							jQuery(document).ready(function($) {
