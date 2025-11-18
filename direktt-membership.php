@@ -313,6 +313,7 @@ function direktt_membership_settings() {
 		<form method="post" action="">
 			<?php wp_nonce_field( 'direktt_admin_membership_save', 'direktt_admin_membership_nonce' ); ?>
 
+			<h2 class="title"><?php echo esc_html__( 'General Settings', 'direktt-membership' ); ?></h2>
 			<table class="form-table direktt-membership-table">
 				<tr>
 					<th scope="row"><label for="direktt_membership_validation_slug"><?php echo esc_html__( 'Membership Validation Page Slug', 'direktt-membership' ); ?></label></th>
@@ -322,41 +323,47 @@ function direktt_membership_settings() {
 					</td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="direktt_membership_issue_categories"><?php esc_html_e( 'Users to Issue/Validate Memberships', 'direktt-membership' ); ?></label></th>
-					<td>
-						<select name="direktt_membership_issue_categories" id="direktt_membership_issue_categories">
-							<option value="0"><?php echo esc_html__( 'Select Category', 'direktt-membership' ); ?></option>
-							<?php foreach ( $all_categories as $category ) : ?>
-								<option value="<?php echo esc_attr( $category['value'] ); ?>" <?php selected( $issue_categories, $category['value'] ); ?>>
-									<?php echo esc_html( $category['name'] ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-						<p class="description"><?php esc_html_e( 'Users belonging to this category will be able to Issue/Validate Memberships.', 'direktt-membership' ); ?></p>
-					</td>
-				</tr>
+                    <th scope="row"><label for="direktt_membership_issue_categories"><?php echo esc_html__( 'Users to Manage Memberships', 'direktt-membership' ); ?></label></th>
+                    <td>
+                       <fieldset class="direktt-category-tag-fieldset">
+                            <legend class="screen-reader-text"><span><?php echo esc_html__( 'Users to Manage Memberships', 'direktt-membership' ); ?></span></legend>
+                            <label for="direktt_membership_issue_categories"><?php echo esc_html__( 'Category', 'direktt-membership' ); ?></label>
+                            <select name="direktt_membership_issue_categories" id="direktt_membership_issue_categories">
+								<option value="0"><?php echo esc_html__( 'Select Category', 'direktt-membership' ); ?></option>
+								<?php foreach ( $all_categories as $category ) : ?>
+									<option value="<?php echo esc_attr( $category['value'] ); ?>" <?php selected( $issue_categories, $category['value'] ); ?>>
+										<?php echo esc_html( $category['name'] ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+                            <br>
+                            <label for="direktt_membership_issue_tags"><?php echo esc_html__( 'Tag', 'direktt-membership' ); ?></label>
+                            <select name="direktt_membership_issue_tags" id="direktt_membership_issue_tags">
+								<option value="0"><?php echo esc_html__( 'Select Tag', 'direktt-membership' ); ?></option>
+								<?php foreach ( $all_tags as $tag ) : ?>
+									<option value="<?php echo esc_attr( $tag['value'] ); ?>" <?php selected( $issue_tags, $tag['value'] ); ?>>
+										<?php echo esc_html( $tag['name'] ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+                        </fieldset>
+                        <p class="description"><?php echo esc_html__( 'Users with this category/tag will be able to manage membership.', 'direktt-membership' ); ?></p>
+                    </td>
+                </tr>
+			</table>
+			<h2 class="title"><?php echo esc_html__( 'Messages', 'direktt-membership' ); ?></h2>
+			<h3><?php echo esc_html__( 'Membership Issuance', 'direktt-membership' ); ?></h3>
+			<h3><?php echo esc_html__( 'Send Message to Subscriber', 'direktt-membership' ); ?></h3>
+			<table class="form-table direktt-membership-table">
 				<tr>
-					<th scope="row"><label for="direktt_membership_issue_tags"><?php esc_html_e( 'Users to Issue/Validate Memberships', 'direktt-membership' ); ?></label></th>
-					<td>
-						<select name="direktt_membership_issue_tags" id="direktt_membership_issue_tags">
-							<option value="0"><?php echo esc_html__( 'Select Tag', 'direktt-membership' ); ?></option>
-							<?php foreach ( $all_tags as $tag ) : ?>
-								<option value="<?php echo esc_attr( $tag['value'] ); ?>" <?php selected( $issue_tags, $tag['value'] ); ?>>
-									<?php echo esc_html( $tag['name'] ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-						<p class="description"><?php esc_html_e( 'Users with this tag will be able to Issue/Validate Memberships.', 'direktt-membership' ); ?></p>
-					</td>
-				</tr>
-				<tr>
-                    <th scope="row"><label for="direktt_membership_user_issuance"><?php echo esc_html__( 'Send to Subscriber on Membership Issuance', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_user_issuance"><?php echo esc_html__( 'Enable', 'direktt-membership' ); ?></label></th>
                     <td>
                         <input type="checkbox" name="direktt_membership_user_issuance" id="direktt_membership_user_issuance" value="yes" <?php checked( $membership_user_issuance ); ?> />
+						<label for="direktt_membership_user_issuance"><span class="description"><?php echo esc_html__( 'When enabled, a notification will be sent to the subscriber when a membership is issued to them.', 'direktt-membership' ); ?></span></label>
                     </td>
                 </tr>
                 <tr id="direktt-membership-settings-mt-user-issuance-row">
-                    <th scope="row"><label for="direktt_membership_user_issuance_template"><?php echo esc_html__( 'Subscriber Message Template on Membership Issuance', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_user_issuance_template"><?php echo esc_html__( 'Message Template', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_user_issuance_template" id="direktt_membership_user_issuance_template">
                             <option value="0"><?php echo esc_html__( 'Select Template', 'direktt-membership' ); ?></option>
@@ -366,17 +373,22 @@ function direktt_membership_settings() {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php echo esc_html__( 'Description TODO.', 'direktt-membership' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'You can use following dynamic placeholders in this template:', 'direktt-membership' ); ?></p>
+                        <p class="description"><code><?php echo esc_html( '#TODO#' ); ?></code><?php echo esc_html__( ' - TODO.', 'direktt-membership' ); ?></p>
                     </td>
                 </tr>
+			</table>
+			<h3><?php echo esc_html__( 'Send Message to Admin', 'direktt-membership' ); ?></h3>
+			<table class="form-table direktt-membership-table">
 				<tr>
-                    <th scope="row"><label for="direktt_membership_admin_issuance"><?php echo esc_html__( 'Send to Admin on Membership Issuance', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_admin_issuance"><?php echo esc_html__( 'Enable', 'direktt-membership' ); ?></label></th>
                     <td>
                         <input type="checkbox" name="direktt_membership_admin_issuance" id="direktt_membership_admin_issuance" value="yes" <?php checked( $membership_admin_issuance ); ?> />
+						<label for="direktt_membership_admin_issuance"><span class="description"><?php echo esc_html__( 'When enabled, a notification will be sent to the admin when a membership is issued.', 'direktt-membership' ); ?></span></label>
                     </td>
                 </tr>
                 <tr id="direktt-membership-settings-mt-admin-issuance-row">
-                    <th scope="row"><label for="direktt_membership_admin_issuance_template"><?php echo esc_html__( 'Admin Message Template on Membership Issuance', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_admin_issuance_template"><?php echo esc_html__( 'Message Template', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_admin_issuance_template" id="direktt_membership_admin_issuance_template">
                             <option value="0"><?php echo esc_html__( 'Select Template', 'direktt-membership' ); ?></option>
@@ -386,17 +398,23 @@ function direktt_membership_settings() {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php echo esc_html__( 'Description TODO.', 'direktt-membership' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'You can use following dynamic placeholders in this template:', 'direktt-membership' ); ?></p>
+                        <p class="description"><code><?php echo esc_html( '#TODO#' ); ?></code><?php echo esc_html__( ' - TODO.', 'direktt-membership' ); ?></p>
                     </td>
                 </tr>
+			</table>
+			<h3><?php echo esc_html__( 'Membership Activation', 'direktt-membership' ); ?></h3>
+			<h3><?php echo esc_html__( 'Send Message to Subscriber', 'direktt-membership' ); ?></h3>
+			<table class="form-table direktt-membership-table">
 				<tr>
-                    <th scope="row"><label for="direktt_membership_user_activation"><?php echo esc_html__( 'Send to Subscriber on Membership Activation', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_user_activation"><?php echo esc_html__( 'Enable', 'direktt-membership' ); ?></label></th>
                     <td>
                         <input type="checkbox" name="direktt_membership_user_activation" id="direktt_membership_user_activation" value="yes" <?php checked( $membership_user_activation ); ?> />
+						<label for="direktt_membership_user_activation"><span class="description"><?php echo esc_html__( 'When enabled, a notification will be sent to the subscriber when their membership is activated.', 'direktt-membership' ); ?></span></label>
                     </td>
                 </tr>
                 <tr id="direktt-membership-settings-mt-user-activation-row">
-                    <th scope="row"><label for="direktt_membership_user_activation_template"><?php echo esc_html__( 'Subscriber Message Template on Membership Activation', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_user_activation_template"><?php echo esc_html__( 'Message Template', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_user_activation_template" id="direktt_membership_user_activation_template">
                             <option value="0"><?php echo esc_html__( 'Select Template', 'direktt-membership' ); ?></option>
@@ -406,17 +424,22 @@ function direktt_membership_settings() {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php echo esc_html__( 'Description TODO.', 'direktt-membership' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'You can use following dynamic placeholders in this template:', 'direktt-membership' ); ?></p>
+                        <p class="description"><code><?php echo esc_html( '#TODO#' ); ?></code><?php echo esc_html__( ' - TODO.', 'direktt-membership' ); ?></p>
                     </td>
                 </tr>
+			</table>
+			<h3><?php echo esc_html__( 'Send Message to Admin', 'direktt-membership' ); ?></h3>
+			<table class="form-table direktt-membership-table">
 				<tr>
-                    <th scope="row"><label for="direktt_membership_admin_activation"><?php echo esc_html__( 'Send to Admin on Membership Activation', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_admin_activation"><?php echo esc_html__( 'Enable', 'direktt-membership' ); ?></label></th>
                     <td>
                         <input type="checkbox" name="direktt_membership_admin_activation" id="direktt_membership_admin_activation" value="yes" <?php checked( $membership_admin_activation ); ?> />
+						<label for="direktt_membership_admin_activation"><span class="description"><?php echo esc_html__( 'When enabled, a notification will be sent to the admin when a membership is activated.', 'direktt-membership' ); ?></span></label>
                     </td>
                 </tr>
                 <tr id="direktt-membership-settings-mt-admin-activation-row">
-                    <th scope="row"><label for="direktt_membership_admin_activation_template"><?php echo esc_html__( 'Admin Message Template on Membership Activation', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_admin_activation_template"><?php echo esc_html__( 'Message Template', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_admin_activation_template" id="direktt_membership_admin_activation_template">
                             <option value="0"><?php echo esc_html__( 'Select Template', 'direktt-membership' ); ?></option>
@@ -426,17 +449,23 @@ function direktt_membership_settings() {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php echo esc_html__( 'Description TODO.', 'direktt-membership' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'You can use following dynamic placeholders in this template:', 'direktt-membership' ); ?></p>
+                        <p class="description"><code><?php echo esc_html( '#TODO#' ); ?></code><?php echo esc_html__( ' - TODO.', 'direktt-membership' ); ?></p>
                     </td>
                 </tr>
+			</table>
+			<h3><?php echo esc_html__( 'Membership Usage', 'direktt-membership' ); ?></h3>
+			<h3><?php echo esc_html__( 'Send Message to Subscriber', 'direktt-membership' ); ?></h3>
+			<table class="form-table direktt-membership-table">
 				<tr>
-                    <th scope="row"><label for="direktt_membership_user_usage"><?php echo esc_html__( 'Send to Subscriber on Membership Usage', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_user_usage"><?php echo esc_html__( 'Enable', 'direktt-membership' ); ?></label></th>
                     <td>
                         <input type="checkbox" name="direktt_membership_user_usage" id="direktt_membership_user_usage" value="yes" <?php checked( $membership_user_usage ); ?> />
+						<label for="direktt_membership_user_usage"><span class="description"><?php echo esc_html__( 'When enabled, a notification will be sent to the subscriber when their membership is used.', 'direktt-membership' ); ?></span></label>
                     </td>
                 </tr>
                 <tr id="direktt-membership-settings-mt-user-usage-row">
-                    <th scope="row"><label for="direktt_membership_user_usage_template"><?php echo esc_html__( 'Subscriber Message Template on Membership Usage', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_user_usage_template"><?php echo esc_html__( 'Message Template', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_user_usage_template" id="direktt_membership_user_usage_template">
                             <option value="0"><?php echo esc_html__( 'Select Template', 'direktt-membership' ); ?></option>
@@ -446,17 +475,22 @@ function direktt_membership_settings() {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php echo esc_html__( 'Description TODO.', 'direktt-membership' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'You can use following dynamic placeholders in this template:', 'direktt-membership' ); ?></p>
+                        <p class="description"><code><?php echo esc_html( '#TODO#' ); ?></code><?php echo esc_html__( ' - TODO.', 'direktt-membership' ); ?></p>
                     </td>
                 </tr>
+			</table>
+			<h3><?php echo esc_html__( 'Send Message to Admin', 'direktt-membership' ); ?></h3>
+			<table class="form-table direktt-membership-table">
 				<tr>
-                    <th scope="row"><label for="direktt_membership_admin_usage"><?php echo esc_html__( 'Send to Admin on Membership Usage', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_admin_usage"><?php echo esc_html__( 'Enable', 'direktt-membership' ); ?></label></th>
                     <td>
                         <input type="checkbox" name="direktt_membership_admin_usage" id="direktt_membership_admin_usage" value="yes" <?php checked( $membership_admin_usage ); ?> />
+						<label for="direktt_membership_admin_usage"><span class="description"><?php echo esc_html__( 'When enabled, a notification will be sent to the admin when a membership is used.', 'direktt-membership' ); ?></span></label>
                     </td>
                 </tr>
                 <tr id="direktt-membership-settings-mt-admin-usage-row">
-                    <th scope="row"><label for="direktt_membership_admin_usage_template"><?php echo esc_html__( 'Admin Message Template on Membership Usage', 'direktt-membership' ); ?></label></th>
+                    <th scope="row"><label for="direktt_membership_admin_usage_template"><?php echo esc_html__( 'Message Template', 'direktt-membership' ); ?></label></th>
                     <td>
                         <select name="direktt_membership_admin_usage_template" id="direktt_membership_admin_usage_template">
                             <option value="0"><?php echo esc_html__( 'Select Template', 'direktt-membership' ); ?></option>
@@ -466,7 +500,8 @@ function direktt_membership_settings() {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php echo esc_html__( 'Description TODO.', 'direktt-membership' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'You can use following dynamic placeholders in this template:', 'direktt-membership' ); ?></p>
+                        <p class="description"><code><?php echo esc_html( '#TODO#' ); ?></code><?php echo esc_html__( ' - TODO.', 'direktt-membership' ); ?></p>
                     </td>
                 </tr>
 			</table>
@@ -1079,7 +1114,7 @@ function direktt_membership_setup_profile_tool() {
 
 function direktt_membership_render_profile_tool() {
 	if ( isset( $_GET['success_flag'] ) && $_GET['success_flag'] === '1' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, only a flag for displaying a message.
-		echo '<div class="notice"><p>' . esc_html__( 'Membership package assigned successfully.', 'direktt-membership' ) . '</p></div>';
+		echo '<div class="notice"><p>' . esc_html__( 'Membership package issued successfully.', 'direktt-membership' ) . '</p></div>';
 	}
 	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, action based router for content rendering.
 		direktt_membership_render_view_details( isset( $_GET['id'] ) ? sanitize_text_field( wp_unslash( $_GET['id'] ) ) : '' ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
@@ -1323,7 +1358,7 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 	$subscription_id = $direktt_user['direktt_user_id'];
 
 	echo '<div id="direktt-assign-membership-packages-wrapper">';
-	echo '<h3>' . esc_html__( 'Assign Membership Packages', 'direktt-membership' ) . '</h3>';
+	echo '<h3>' . esc_html__( 'Issue Membership Packages', 'direktt-membership' ) . '</h3>';
 	if ( empty( $membership_packages ) ) {
 		echo '<div class="notice notice-error"><p>' . esc_html__( 'There is no existing membership packages.', 'direktt-membership' ) . '</p></div>';
 	} else {
@@ -1362,13 +1397,13 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 			echo '</tr>';
 			echo '<tr class="direktt-membership-actions">';
 				echo '<td colspan="4">';
-					echo '<button class="button" data-package-id="' . esc_attr( $package->ID ) . '">' . esc_html__( 'Assign Membership', 'direktt-membership' ) . '</button>';
+					echo '<button class="button" data-package-id="' . esc_attr( $package->ID ) . '">' . esc_html__( 'Issue Membership', 'direktt-membership' ) . '</button>';
 				echo '</td>';
 			echo '</tr>';
 		}
 		echo '</tbody></table>';
 		$allowed_html = wp_kses_allowed_html( 'post' );
-		echo wp_kses( Direktt_Public::direktt_render_confirm_popup( 'direktt-assign-membership-package-confirm', __( 'Are you sure you want to assign this membership package?', 'direktt-membership' ) ), $allowed_html );
+		echo wp_kses( Direktt_Public::direktt_render_confirm_popup( 'direktt-assign-membership-package-confirm', __( 'Are you sure you want to issue this membership package?', 'direktt-membership' ) ), $allowed_html );
 		echo wp_kses( Direktt_Public::direktt_render_alert_popup( 'direktt-membership-alert', '' ), $allowed_html );
 		echo wp_kses( Direktt_Public::direktt_render_loader( __( 'Please don\'t leave this page until the process is complete.', 'direktt-membership' ) ), $allowed_html );
 		wp_nonce_field( 'direktt_assign_membership_package_nonce', 'direktt_assign_membership_package_nonce_field' );
@@ -1410,7 +1445,7 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 						},
 						error: function() {
 							$( '#direktt-membership-alert' ).addClass( 'direktt-popup-on' );
-							$( '#direktt-membership-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error assigning the membership package.', 'direktt-membership' ) ); ?>" );
+							$( '#direktt-membership-alert .direktt-popup-text' ).text( "<?php echo esc_js( __( 'There was an error issuing the membership package.', 'direktt-membership' ) ); ?>" );
 							$( '.direktt-loader-overlay' ).fadeOut();
 						}
 					});
@@ -1498,7 +1533,7 @@ function handle_direktt_assign_membership_package() {
 			wp_send_json_success();
 			wp_die();
 		} else {
-			wp_send_json_error( esc_html__( 'Failed to assign membership package.', 'direktt-membership' ) );
+			wp_send_json_error( esc_html__( 'Failed to issue membership package.', 'direktt-membership' ) );
 			wp_die();
 		}
 	} else {
