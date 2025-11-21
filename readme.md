@@ -4,7 +4,7 @@ A powerful WordPress plugin for managing memberships, tightly integrated with th
 
 With Membership extension you can:
 
-- **Create Membership Packages** via wp-admin interface.
+- **Create Membership Packages** via wp-admin interface. Both **Time based** (e.g. valid for 30 days) and **Usage based** (e.g. valid for 10 uses) memberships are supported.
 - **Assign Membership Packages** to users via Direktt mobile app.
 - **Record usages/activate Membership Packages** directly from Direktt mobile app.
 - **Display active personal Membership Packages** to users in Direktt mobile app.
