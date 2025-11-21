@@ -75,7 +75,7 @@ https://github.com/direktt/direktt-membership/wiki
     - There is a "Range" option which can be set to "Last 7 days", "Last 30 days", "Last 90 days" or "Custom date range".
     - Generate Issued Reports - CSV file is generated, containing the following information:
         - Package Name - title of the Membership Package
-        - Reciever Display Name - display name of the subscriber to whom it was issued
+        - Receiver Display Name - display name of the subscriber to whom it was issued
         - Activated - true/false, for time based packages, this will be true if membership was activated, for usage based packages it will always be false
         - Time of Issue - timestamp when package was issued
         - Time of Activation - timestamp when package was activated (only for time based packages)
@@ -85,7 +85,7 @@ https://github.com/direktt/direktt-membership/wiki
     - Generate Usage Reports (displays only the usage based packages) - CSV file is generated, containing the following information:
         - Package Name - title of the Membership Package
         - Time of Issue - timestamp when package was issued
-        - Reciever Display Name - display name of the subscriber to whom it was issued
+        - Receiver Display Name - display name of the subscriber to whom it was issued
         - Validator Display Name - display name of the user who recorded (validated) usage of the package. 
 
 ### Shortcode (Front End)
