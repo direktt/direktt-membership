@@ -47,73 +47,33 @@ https://github.com/direktt/direktt-membership/wiki
     - Add title of the Membership package.
     - Find meta box Package Properties, inside configure:
         - Package type:
-            - Time based - Duration of access is based on time (e.g., 30 days)
-            - Usage based - Duration of access is based on usage (e.g., 10 usages)
+            - Time based - Access is based on time duration (e.g., 30 days)
+            - Usage based - Access is based on number of usages (e.g., 10 usages)
         - If Time based is selected configure:
             - Validity (days) - Number of days the membership is valid after activation (0 is unlimited).
         - If Usage based is selected configure:
             - Max Usage - Number of times the membership can be used (0 is unlimited).
 
-### Assign Membership Package to user
+### Workflow
 
-- Access the Direktt user profile.
-- Go to Membership tool subpage.
-- Choose the membership package and click "Assign Membership" button and then confirm.
-- Membership is now assigned to user.
-
-### Activating Time Based Membership Packages
-
-- There are two ways for activation:
-    - From Direktt Profile tool:
-        - Admin accesses the Direktt Profile tool.
-        - Admin finds the Membership Package in the list, and clicks the "View Details" button
-        - Admin clicks the "Activate Membership" button and confirms.
-        - Membership is now activated and expires in number of days set in Package Properties.
-    - From shortcode
-        - User accesses the page with the shortcode for membership tool.
-        - User finds the Membership Package in the list, and clicks the "View Details" button
-        - User shows the QR Code to Admin, Admin scans the code and validation page opens.
-        - Admin clicks the "Activate Membership" button and confirms.
-        - Membership is now activated and expires in number of days set in Package Properties.
-
-### Recording Usage of Usage Based Membership Packages
-
-- There are two ways for activation:
-    - From Direktt Profile tool:
-        - Admin accesses the Direktt Profile tool.
-        - Admin finds the Membership Package in the list, and clicks the "View Details" button
-        - Admin clicks the "Record Usage" button and confirms.
-        - Usage is now recorded and number of usages left was deducted by 1.
-    - From shortcode
-        - User accesses the page with the shortcode for membership tool.
-        - User finds the Membership Package in the list, and clicks the "View Details" button
-        - User shows the QR Code to Admin, Admin scans the code and validation page opens.
-        - Admin clicks the "Record Usage" button and confirms.
-        - Usage is now recorded and number of usages left was deducted by 1.
-
-### Invalidation of Membership Package
-
-- There are two ways for activation:
-    - From Direktt Profile tool:
-        - Admin accesses the Direktt Profile tool.
-        - Admin finds the Membership Package in the list, and clicks the "View Details" button
-        - Admin clicks the "Invalidate Membership" button and confirms.
-        - Membership is now invalidated and is not active/usage cannot be recorded.
-    - From shortcode
-        - User accesses the page with the shortcode for membership tool.
-        - User finds the Membership Package in the list, and clicks the "View Details" button
-        - User shows the QR Code to Admin, Admin scans the code and validation page opens.
-        - Admin clicks the "Invalidate Membership" button and confirms.
-        - Membership is now invalidated and is not active/usage cannot be recorded.
-
-### Generating reports
-
-- Find **Direktt > Settings > Membership Settings** in your WordPress admin menu.
-- On the bottom, you will find section **Generate Membership Reports**
-- There is a "Range" option which can be set to "Last 7 days", "Last 30 days", "Last 90 days" or "Custom date range".
-- Generate Issued Reports:
-    - CSV file is downloaded, containing the next informations:
-        - ID - custom ID from database
+- **Assign Membership Package to user**
+    - Access the Direktt user profile in Direktt mobile app.
+    - Go to Membership tool subpage.
+    - Choose the membership package and click "Assign Membership" button.
+    - Membership is now assigned to user. The user receives the message and channel admin receives the notification.
+- **Activate Time Based Membership Packages**
+    - Time based Membership Packages are activated on first usage.
+    - Salesperson activates the package using Direktt mobile app by scanning the QR Code
+    - Once active, membership expires in number of days set in Package Properties.
+- **Validate Membership and record usage**
+    - Salesperson validates the membership using Direktt mobile app by scanning the QR Code
+    - Upon QR Code scan, membership properties are displayed to salesperson for validation
+    - If valid, salesperson taps the "Record Usage" button. Usage is now recorded.
+- **Generate reports**
+    - Find **Direktt > Settings > Membership Settings** in your WordPress admin menu.
+    - On the bottom, you will find section **Generate Membership Reports**
+    - There is a "Range" option which can be set to "Last 7 days", "Last 30 days", "Last 90 days" or "Custom date range".
+    - Generate Issued Reports - CSV file is generated, containing the following information:
         - Package Name - title of the Membership Package
         - Reciever Display Name - display name of the subscriber to whom it was issued
         - Activated - true/false, for time based packages, this will be true if membership was activated, for usage based packages it will always be false
@@ -122,9 +82,7 @@ https://github.com/direktt/direktt-membership/wiki
         - Expires on - timestamp when package expired/will expire (only for time based packages)
         - Usages left - number of usages left
         - Valid - true/false, false only if membership package was invalidated, true by default
-- Generate Used Reports (displays only the usage based packages):
-    - CSV file is downloaded, containing the next informations:
-        - ID - custom ID from database
+    - Generate Usage Reports (displays only the usage based packages) - CSV file is generated, containing the following information:
         - Package Name - title of the Membership Package
         - Time of Issue - timestamp when package was issued
         - Reciever Display Name - display name of the subscriber to whom it was issued
