@@ -47,8 +47,8 @@ https://github.com/direktt/direktt-membership/wiki
     - Add title of the Membership package.
     - Find meta box Package Properties, inside configure:
         - Package type:
-            - Time based - Access is based on time duration (e.g., 30 days)
-            - Usage based - Access is based on number of usages (e.g., 10 usages)
+            - Time based - Validity is based on time period (e.g., membership is valid for next 30 days)
+            - Usage based - Validity is based on number of usages (e.g., membership is valid for 10 usages/validations)
         - If Time based is selected configure:
             - Validity (days) - Number of days the membership is valid after activation (0 is unlimited).
         - If Usage based is selected configure:
