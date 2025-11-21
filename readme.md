@@ -9,7 +9,7 @@ With Membership extension you can:
 - **Record usages/activate Membership Packages** directly from Direktt mobile app.
 - **Display active personal Membership Packages** to users in Direktt mobile app.
 - **Validate user Memberships** by scanning QR Codes in Direktt mobile app.
-- **Generate reports on Memebrship usage** reports on issued and used membership packages in given time period from wp-admin interface.
+- **Generate reports on Memebership usage** reports on issued and used membership packages in given time period from wp-admin interface.
 
 ## Documentation
 
@@ -36,10 +36,9 @@ https://github.com/direktt/direktt-membership/wiki
 
 - Find **Direktt > Settings > Membership Settings** in your WordPress admin menu.
 - Configure:
-    - Set up slug of the page containing the shortcode for validation.
-    - Which user category/tag will be able to issue/validate membership packages.
-    - Set up QR Code logo, color and background color, QR Code preview is available.
-    - Set up notifications for users and Direktt admin on membership package issuance/activation/usage.
+    - Direktt user category/tag allowed to issue/validate membership packages.
+    - Notifications for users and admin on membership package issuance/activation/usage.
+- Generate reports on Membership usage over selected time period.  
 
 ### Membership Packages
 
