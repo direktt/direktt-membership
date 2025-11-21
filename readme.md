@@ -1,6 +1,8 @@
 # Direktt Membership
 
-A powerful WordPress plugin for managing memberships, tightly integrated with the [Direktt WordPress Plugin](https://direktt.com/).
+Direktt Membership is a flexible WordPress extension that streamlines the creation, assignment, validation, and management of time-based or usage-based memberships. Issue packages, validate usage via QR codes, track status, notify subscribers, and generate insightful reports, delivering the ultimate membership experience for both businesses and members.
+
+It is tightly integrated with the [Direktt WordPress Plugin](https://wordpress.org/plugins/direktt/).  
 
 With Membership extension you can:
 
