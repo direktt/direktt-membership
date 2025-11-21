@@ -92,7 +92,7 @@ https://github.com/direktt/direktt-membership/wiki
 
 ```[direktt_membership_tool]```
 
-Using this shortcode, you can display the all currently active personal Membership Packages to users within Direktt mobile app
+Using this shortcode, you can display all the currently active personal Membership Packages to users within Direktt mobile app
 
 ### Shortcode (Validation)
 
