@@ -90,27 +90,37 @@ https://github.com/direktt/direktt-membership/wiki
 
 ### Shortcode (Front End)
 
-Show the all non-closed cases (only to Direktt Admin and users that are able top manage cases) and current user's non-closed cases to Direktt user:
-
 ```[direktt_membership_tool]```
+
+Using this shortcode, you can display the all currently active personal Membership Packages to users within Direktt mobile app
 
 ### Shortcode (Validation)
 
-Show the all non-closed cases (only to Direktt Admin and users that are able top manage cases) and current user's non-closed cases to Direktt user:
-
 ```[direktt_membership_validation]```
+
+Using this shortcode, you can display the validation interface to salespersons. The interface will be automatically displayed upon Membership QR Code scan showing all relevant properties of the issued package
 
 ## Notification Templates
 
 Direktt Message templates support following dynamic placeholders:
 
+- `#display_name#` - display name of the subscriber
+- `#subscription_id#` - subscription id of the subscriber
+  
 - TODO
+
+## Usage Logs
+
+Every Membership Package isuuance / usage is recorder in the respective log. You can query logs and generate reports (explained above and in documentation) on **Direktt > Settings > Membership Settings** in your WordPress admin menu.
 
 ---
 
 ## Updating
 
-The plugin supports updating directly from this GitHub repository.
+The plugin supports updates directly from WordPress admin console.  
+
+You can find all plugin releases in the Releases section of this repository:  
+https://github.com/direktt/direktt-membership/releases.
 
 ---
 
@@ -122,4 +132,9 @@ GPL-2.0-or-later
 
 ## Support
 
-Contact [Direktt](https://direktt.com/) for questions, issues, or contributions.
+Please use Issues section of this repository for any issue you might have:  
+https://github.com/direktt/direktt-membership/issues.  
+
+Join Direktt Community on Discord - [Direktt Discord Server](https://discord.gg/xaFWtbpkWp)  
+
+Contact [Direktt](https://direktt.com/) for general questions, issues, or contributions.
