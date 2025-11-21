@@ -2,30 +2,37 @@
 
 A powerful WordPress plugin for managing memberships, tightly integrated with the [Direktt WordPress Plugin](https://direktt.com/).
 
+With Membership extension you can:
+
 - **Create Membership Packages** via wp-admin interface.
-- **Assign Membership Packages** to users via Direktt User profile.
-- **Record usages/Activate Membership Packages** for users via Direktt User profile or shortcode.
-- **Display Membership Packages** to users via a simple shortcode.
-- **Customizable QR Codes** for activating/recording usage of membership package.
-- **Validating Membership Packages** which happens when Admin scans the QR Code.
-- **Generate Reports** for issued/used membership packages easily from wp-admin interface. 
+- **Assign Membership Packages** to users via Direktt mobile app.
+- **Record usages/activate Membership Packages** directly from Direktt mobile app.
+- **Display active personal Membership Packages** to users in Direktt mobile app.
+- **Validate user Memberships** by scanning QR Codes in Direktt mobile app.
+- **Generate reports on Memebrship usage** reports on issued and used membership packages in given time period from wp-admin interface.
+
+## Documentation
+
+You can find the detailed plugin documentation, guides and tutorials in the Wiki section:  
+https://github.com/direktt/direktt-membership/wiki
 
 ## Requirements
 
-- WordPress 5.0 or higher
+- WordPress 5.6 or higher
 - The [Direktt Plugin](https://wordpress.org/plugins/direktt/) (must be active)
 
 ## Installation
 
 1. Install and activate the **Direktt** core plugin.
 2. Download the direktt-membership.zip from the latest [release](https://github.com/direktt/direktt-membership/releases)
-2. Upload **direktt-membership.zip** either through WordPress' **Plugins > Add Plugin > Upload Plugin** or upload the contents of this direktt-membership.zip to the `/wp-content/plugins/` directory of your WordPress installation.
-3. Activate **Direktt Membership** from your WordPress plugins page.
-4. Configure the plugin under **Direktt > Settings > Membership Settings**.
+3. Upload **direktt-membership.zip** either through WordPress' **Plugins > Add Plugin > Upload Plugin** or upload the contents of this direktt-membership.zip to the `/wp-content/plugins/` directory of your WordPress installation.
+4. Activate **Direktt Membership** from your WordPress plugins page.
+5. Create Membership Packages in wp-admin **Direktt > Membership Packages**
+6. Configure the plugin under **Direktt > Settings > Membership Settings**.
 
 ## Usage
 
-### Admin Interface
+### Plugin Settings
 
 - Find **Direktt > Settings > Membership Settings** in your WordPress admin menu.
 - Configure:
