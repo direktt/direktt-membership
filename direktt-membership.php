@@ -495,12 +495,12 @@ function direktt_membership_settings() {
 
 			<?php submit_button( esc_html__( 'Save Settings', 'direktt-membership' ) ); ?>
 		</form>
-		<div class="direktt-membership-reports form-table">
+		<div class="direktt-membership-reports">
 			<h2><?php echo esc_html__( 'Generate Membership Reports', 'direktt-membership' ); ?></h2>
-			<table>
+			<table class="form-table">
 				<?php wp_nonce_field( 'direktt_membership_reports', 'direktt_membership_reports_nonce' ); ?>
-				<tr>
-					<th scope="row"><label for="direktt-report-range"><?php echo esc_html__( 'Range', 'direktt-membership' ); ?></label></th>
+				<tr class="direktt-membership-reports-range">
+					<td><label for="direktt-report-range"><?php echo esc_html__( 'Range', 'direktt-membership' ); ?></label></td>
 					<td>
 						<select id="direktt-report-range" name="direktt_report_range">
 							<option value="7"><?php echo esc_html__( 'Last 7 days', 'direktt-membership' ); ?></option>
@@ -511,14 +511,14 @@ function direktt_membership_settings() {
 					</td>
 				</tr>
 				<tr style="display: none;" id="direktt-custom-dates">
-					<th scope="row"><label for="direktt-date-from"><?php echo esc_html__( 'From - To', 'direktt-membership' ); ?></label></th>
+					<td><label for="direktt-date-from"><?php echo esc_html__( 'From - To', 'direktt-membership' ); ?></label></td>
 					<td>
 						<input type="date" id="direktt-date-from" name="direktt_date_from" />
 						<?php echo esc_html__( '-', 'direktt-membership' ); ?>
 						<input type="date" id="direktt-date-to" name="direktt_date_to" />
 					</td>
 				</tr>
-				<tr>
+				<tr class="direktt-membership-reports-buttons">
 					<td colspan="2">
 						<div>
 							<button type="button" class="button" id="direktt-generate-issued"><?php echo esc_html__( 'Generate Issued Report', 'direktt-membership' ); ?></button>
