@@ -1341,13 +1341,13 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 
 	$membership_packages = get_posts( $args );
 
-	global $direktt_user;
+	$direktt_user = Direktt_User::direktt_get_current_user();;
 	$subscription_id = $direktt_user['direktt_user_id'];
 
 	echo '<div id="direktt-assign-membership-packages-wrapper">';
 	echo '<h3>' . esc_html__( 'Issue Membership Packages', 'direktt-membership' ) . '</h3>';
 	if ( empty( $membership_packages ) ) {
-		echo '<div class="notice notice-error"><p>' . esc_html__( 'There is no existing membership packages.', 'direktt-membership' ) . '</p></div>';
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'There are no existing membership packages.', 'direktt-membership' ) . '</p></div>';
 	} else {
 		echo '<table class="direktt-membership-packages-table"><thead><tr>';
 		echo '<th><strong>' . esc_html__( 'Name', 'direktt-membership' ) . '</strong></th>';
@@ -1615,7 +1615,7 @@ function direktt_membership_render_view_details( $id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	global $direktt_user;
+	$direktt_user = Direktt_User::direktt_get_current_user();;
 	$subscription_id = $direktt_user['direktt_user_id'];
 
 	$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -2261,7 +2261,7 @@ function handle_direktt_record_membership_usage() {
 }
 
 function direktt_membership_tool_shortcode() {
-	global $direktt_user;
+	$direktt_user = Direktt_User::direktt_get_current_user();;
 	if ( ! $direktt_user ) {
 		ob_start();
 		echo '<div id="direktt-profile-wrapper">';
@@ -2300,7 +2300,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	global $direktt_user;
+	$direktt_user = Direktt_User::direktt_get_current_user();;
 	$subscription_id = $direktt_user['direktt_user_id'];
 
 	$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -2538,7 +2538,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 }
 
 function direktt_membership_user_can_validate() {
-	global $direktt_user;
+	$direktt_user = Direktt_User::direktt_get_current_user();;
 
 	if ( class_exists( 'Direktt_User' ) && Direktt_User::is_direktt_admin() ) {
 		return true;
