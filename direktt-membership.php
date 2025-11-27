@@ -1143,7 +1143,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 				<table>
 					<thead>
 						<tr>
-							<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?><br><span class="direktt-membership-issued-row-label"><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></span></th>
+							<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?><br><span class="direktt-membership-issued-row-label"><?php echo esc_html__( 'Issued', 'direktt-membership' ); ?></span></th>
 							<th><?php echo esc_html__( 'Act.', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Exp.', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
