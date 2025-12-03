@@ -1160,13 +1160,8 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 		);
 		?>
 		<div class="direktt-membership-filter-wrapper">
-			<select name="direktt-membership-filter" id="direktt-membership-filter">
-				<?php foreach ( $filter_options as $value => $label ) : ?>
-					<option value="<?php echo esc_attr( $value ); ?>">
-						<?php echo esc_html( $label ); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
+			<input type="checkbox" name="direktt-membership-filter" id="direktt-membership-filter">
+			<label for="direktt-membership-filter"><?php echo esc_html__( 'Show only active', 'direktt-membership' ); ?></label>
 		</div>
 
 		<div id="direktt-membership-packages-all">
@@ -1288,8 +1283,8 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 								<td><?php echo esc_html( $package_name ); ?><br><i><?php echo esc_html( human_time_diff( strtotime( $active_membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
 								<td>
 									<?php
-									if ( $membership['activation_time'] ) {
-										$activation_time = strtotime( $membership['activation_time'] );
+									if ( $active_membership['activation_time'] ) {
+										$activation_time = strtotime( $active_membership['activation_time'] );
 										$current_time = strtotime( current_time( 'mysql' ) );
 										echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 									} else {
@@ -1342,9 +1337,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 				const activeDiv = document.getElementById('direktt-membership-packages-active');
 
 				filterSelect.addEventListener('change', function () {
-					const selectedValue = filterSelect.value;
-
-					if (selectedValue === 'active') {
+					if (filterSelect.checked) {
 						allDiv.style.display = 'none';
 						activeDiv.style.display = 'block';
 					} else {
