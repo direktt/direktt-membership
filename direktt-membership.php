@@ -1234,7 +1234,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 								<td><?php echo $membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 							</tr>
 							<tr>
-								<td colspan="7">
+								<td colspan="5">
 									<?php
 									$redirect_url = remove_query_arg( array( 'success_flag' ) );
 									$redirect_url = add_query_arg( array( 'action' => 'view_details', 'id' => $membership['issued_id'] ), $redirect_url );
@@ -1317,7 +1317,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 								<td><?php echo $active_membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 							</tr>
 							<tr>
-								<td colspan="7">
+								<td colspan="5">
 									<?php
 									$redirect_url = remove_query_arg( array( 'success_flag' ) );
 									$redirect_url = add_query_arg( array( 'action' => 'view_details', 'id' => $active_membership['issued_id'] ), $redirect_url );
@@ -1732,7 +1732,7 @@ function direktt_membership_render_view_details( $id ) {
 						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
-						<td colspan="6">
+						<td colspan="4">
 							<?php
 							if ( ! $membership->valid ) {
 								?>
@@ -1909,7 +1909,7 @@ function direktt_membership_render_view_details( $id ) {
 						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
-						<td colspan="4">
+						<td colspan="3">
 							<?php
 							if ( ! $membership->valid ) {
 								?>
@@ -2427,7 +2427,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
-						<td colspan="6">
+						<td colspan="4">
 							<?php
 							if ( ! $membership->valid ) {
 								?>
@@ -2524,7 +2524,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
-						<td colspan="4">
+						<td colspan="3">
 							<?php
 							if ( ! $membership->valid ) {
 								?>
