@@ -1369,7 +1369,7 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 
 	$membership_packages = get_posts( $args );
 
-	$direktt_user = Direktt_User::direktt_get_current_user();;
+	$direktt_user = Direktt_User::direktt_get_current_user();
 	$subscription_id = $direktt_user['direktt_user_id'];
 
 	echo '<div id="direktt-assign-membership-packages-wrapper">';
@@ -1534,14 +1534,24 @@ function handle_direktt_assign_membership_package() {
 				Direktt_Message::send_message_template(
                     array( $reciever_id ),
                     $membership_user_issuance_template,
-					array()
+					array(
+                        'package_name' => get_the_title( $package_id ),
+                        'timestamp' => current_time( 'mysql' ),
+                    )
                 );
 			}
 
 			if ( $membership_admin_issuance && $membership_admin_issuance_template !== 0 ) {
+				$reciever_user = Direktt_User::get_user_by_subscription_id( $reciever_id );
+				$issuer_user   = Direktt_User::get_user_by_subscription_id( $assigner_id );
 				Direktt_Message::send_message_template_to_admin(
                     $membership_admin_issuance_template,
-                    array()
+                    array(
+                        'package_name' => get_the_title( $package_id ),
+                        'timestamp' => current_time( 'mysql' ),
+						'reciever_display_name' => $reciever_user['direktt_display_name'],
+						'issuer_display_name' => $issuer_user['direktt_display_name'],
+                    )
                 );
 			}
 
@@ -1643,7 +1653,7 @@ function direktt_membership_render_view_details( $id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	$direktt_user = Direktt_User::direktt_get_current_user();;
+	$direktt_user = Direktt_User::direktt_get_current_user();
 	$subscription_id = $direktt_user['direktt_user_id'];
 
 	$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -2110,14 +2120,26 @@ function handle_direktt_activate_membership() {
 				Direktt_Message::send_message_template(
                     array( $reciever_id ),
                     $membership_user_activation_template,
-					array()
+					array(
+                        'package_name' => get_the_title( $package_id ),
+                        'timestamp_activated' => $activation_time,
+                        'timestamp_expiry' => $expiry_time,
+                    )
                 );
 			}
 
 			if ( $membership_admin_activation && $membership_admin_activation_template !== 0 ) {
+				$reciever_user = Direktt_User::get_user_by_subscription_id( $reciever_id );
+				$issuer_user   = Direktt_User::direktt_get_current_user();
 				Direktt_Message::send_message_template_to_admin(
                     $membership_admin_activation_template,
-                    array()
+                    array(
+                        'package_name' => get_the_title( $package_id ),
+                        'timestamp_activated' => $activation_time,
+                        'timestamp_expiry' => $expiry_time,
+						'reciever_display_name' => $reciever_user['direktt_display_name'],
+						'activator_display_name' => $issuer_user['direktt_display_name'],
+                    )
                 );
 			}
 			wp_send_json_success();
@@ -2258,18 +2280,37 @@ function handle_direktt_record_membership_usage() {
 
 			$reciever_id = $membership->direktt_reciever_user_id;
 
+			$used_count = $used_count + 1;
+			if ( $max_usage > 0 ) {
+				$usages_left = $max_usage - $used_count;
+			} else {
+				$usages_left = esc_html__( 'unlimited', 'direktt-membership' );
+			}
+
 			if ( $membership_user_usage && $membership_user_usage_template !== 0 ) {
 				Direktt_Message::send_message_template(
                     array( $reciever_id ),
                     $membership_user_usage_template,
-					array()
+					array(
+                        'package_name' => get_the_title( $package_id ),
+                        'timestamp' => $usage_time,
+						'usages_left' => $usages_left,
+                    )
                 );
 			}
 
 			if ( $membership_admin_usage && $membership_admin_usage_template !== 0 ) {
+				$reciever_user = Direktt_User::get_user_by_subscription_id( $reciever_id );
+				$issuer_user   = Direktt_User::get_user_by_subscription_id( $subscription_id );
 				Direktt_Message::send_message_template_to_admin(
                     $membership_admin_usage_template,
-                    array()
+                    array(
+                        'package_name' => get_the_title( $package_id ),
+                        'timestamp' => $usage_time,
+						'usages_left' => $usages_left,
+						'reciever_display_name' => $reciever_user['direktt_display_name'],
+						'validator_display_name' => $issuer_user['direktt_display_name'],
+                    )
                 );
 			}
 			
@@ -2283,7 +2324,7 @@ function handle_direktt_record_membership_usage() {
 }
 
 function direktt_membership_tool_shortcode() {
-	$direktt_user = Direktt_User::direktt_get_current_user();;
+	$direktt_user = Direktt_User::direktt_get_current_user();
 	if ( ! $direktt_user ) {
 		ob_start();
 		echo '<div id="direktt-profile-wrapper">';
@@ -2322,7 +2363,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	$direktt_user = Direktt_User::direktt_get_current_user();;
+	$direktt_user = Direktt_User::direktt_get_current_user();
 	$subscription_id = $direktt_user['direktt_user_id'];
 
 	$membership = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $issued_table WHERE ID = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -2554,7 +2595,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 }
 
 function direktt_membership_user_can_validate() {
-	$direktt_user = Direktt_User::direktt_get_current_user();;
+	$direktt_user = Direktt_User::direktt_get_current_user();
 
 	if ( class_exists( 'Direktt_User' ) && Direktt_User::is_direktt_admin() ) {
 		return true;
