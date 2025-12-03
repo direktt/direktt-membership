@@ -580,6 +580,11 @@ function direktt_membership_settings() {
 									return ajaxData;
 								}
 
+								$( document ).on( 'click', '#direktt-membership-notice-dissmiss-error', function( event ) {
+									event.preventDefault();
+									$( '#direktt-membership-reports-notice-error' ).remove();
+								});
+
 								// Bind buttons
 								$( '#direktt-generate-issued' ).off( 'click' ).on( 'click', function( event ) {
 									event.preventDefault();
@@ -587,11 +592,13 @@ function direktt_membership_settings() {
 									// Basic client-side validation for custom range
 									if ( data.range === 'custom' ) {
 										if ( ! data.from || ! data.to ) {
-											alert("<?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?>");
+											$( '#direktt-membership-reports-notice-error' ).remove();
+											$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p><?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?></p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 											return;
 										}
 										if ( data.from > data.to ) {
-											alert("<?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?>");
+											$( '#direktt-membership-reports-notice-error' ).remove();
+											$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p><?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?></p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 											return;
 										}
 									}
@@ -606,11 +613,13 @@ function direktt_membership_settings() {
 											if ( response.success ) {
 												window.location.href = response.data.url;
 											} else {
-												alert( response.data );
+												$( '#direktt-membership-reports-notice-error' ).remove();
+												$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p>' + response.data + '</p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 											}
 										},
 										error: function() {
-											alert("<?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?>");
+											$( '#direktt-membership-reports-notice-error' ).remove();
+											$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p><?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?></p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 										}
 									}).always(function() {
 										$( '#direktt-generate-issued' ).prop( 'disabled', false );
@@ -623,11 +632,13 @@ function direktt_membership_settings() {
 									var data = collectReportData( 'used' );
 									if ( data.range === 'custom' ) {
 										if ( ! data.from || ! data.to ) {
-											alert( "<?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?>" );
+											$( '#direktt-membership-reports-notice-error' ).remove();
+											$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p><?php echo esc_js( __( 'Please select both From and To dates for a custom range.', 'direktt-membership' ) ); ?></p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 											return;
 										}
 										if ( data.from > data.to ) {
-											alert( "<?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?>" );
+											$( '#direktt-membership-reports-notice-error' ).remove();
+											$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p><?php echo esc_js( __( 'The From date cannot be later than the To date.', 'direktt-membership' ) ); ?></p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 											return;
 										}
 									}
@@ -642,11 +653,13 @@ function direktt_membership_settings() {
 											if (response.success) {
 												window.location.href = response.data.url;
 											} else {
-												alert(response.data);
+												$( '#direktt-membership-reports-notice-error' ).remove();
+												$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p>' + response.data + '</p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 											}
 										},
 										error: function() {
-											alert("<?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?>");
+											$( '#direktt-membership-reports-notice-error' ).remove();
+											$( '.direktt-membership-reports h2' ).after( '<div class="notice notice-error is-dismissible" id="direktt-membership-reports-notice-error"><p><?php echo esc_js( __( 'There was an error.', 'direktt-membership' ) ); ?></p><button type="button" id="direktt-membership-notice-dissmiss-error" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
 										}
 									}).always(function() {
 										$( '#direktt-generate-used' ).prop( 'disabled', false );
