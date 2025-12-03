@@ -1598,7 +1598,7 @@ function direktt_get_active_user_memberships( $subscription_id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
-	$memberships = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $issued_table WHERE direktt_reciever_user_id = %s AND activated = 1 AND valid = 1 ORDER BY activated DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$memberships = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $issued_table WHERE direktt_reciever_user_id = %s AND activated = 1 AND valid = 1 AND (expiry_time IS NULL OR expiry_time > NOW()) ORDER BY activated DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 			// Justifications for phpcs ignores:
 			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
