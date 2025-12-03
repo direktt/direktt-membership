@@ -2388,7 +2388,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 			<table>
 				<thead>
 					<tr>
-						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
@@ -2497,7 +2497,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 			<table>
 				<thead>
 					<tr>
-						<th><?php echo esc_html__( 'Package Name', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 					</tr>
