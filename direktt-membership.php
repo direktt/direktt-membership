@@ -312,7 +312,7 @@ function direktt_membership_settings() {
 	?>
 	<div class="wrap">
 		<?php if ( $success ) : ?>
-			<div class="notice notice-success">
+			<div class="updated notice is-dismissible">
 				<p><?php esc_html_e( 'Settings saved successfully.', 'direktt-membership' ); ?></p>
 			</div>
 		<?php endif; ?>
