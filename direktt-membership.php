@@ -49,32 +49,32 @@ add_action( 'init', 'direktt_membership_register_cpt' );
 
 // Membership Packages Meta Boxes
 add_action( 'add_meta_boxes', 'direktt_membership_packages_add_custom_box' );
-add_action( 'save_post', 'save_direktt_membership_package_meta' );
+add_action( 'save_post', 'direktt_membership_save_package_meta' );
 
 // Reports AJAX handlers
-add_action( 'wp_ajax_direktt_membership_get_issued_report', 'handle_direktt_membership_get_issued_report' );
-add_action( 'wp_ajax_nopriv_direktt_membership_get_issued_report', 'handle_direktt_membership_get_issued_report' );
-add_action( 'wp_ajax_direktt_membership_get_used_report', 'handle_direktt_membership_get_used_report' );
-add_action( 'wp_ajax_nopriv_direktt_membership_get_used_report', 'handle_direktt_membership_get_used_report' );
+add_action( 'wp_ajax_direktt_membership_get_issued_report', 'direktt_membership_handle_direktt_membership_get_issued_report' );
+add_action( 'wp_ajax_nopriv_direktt_membership_get_issued_report', 'direktt_membership_handle_direktt_membership_get_issued_report' );
+add_action( 'wp_ajax_direktt_membership_get_used_report', 'direktt_membership_handle_direktt_membership_get_used_report' );
+add_action( 'wp_ajax_nopriv_direktt_membership_get_used_report', 'direktt_membership_handle_direktt_membership_get_used_report' );
 
 // Membership Profile Tool Setup
 add_action( 'direktt_setup_profile_tools', 'direktt_membership_setup_profile_tool' );
 
 // Assign Membership Package AJAX Handler
-add_action( 'wp_ajax_direktt_assign_membership_package', 'handle_direktt_assign_membership_package' );
-add_action( 'wp_ajax_nopriv_direktt_assign_membership_package', 'handle_direktt_assign_membership_package' );
+add_action( 'wp_ajax_direktt_assign_membership_package', 'direktt_membership_handle_direktt_assign_membership_package' );
+add_action( 'wp_ajax_nopriv_direktt_assign_membership_package', 'direktt_membership_handle_direktt_assign_membership_package' );
 
 // Activate Membership AJAX Handler
-add_action( 'wp_ajax_direktt_activate_membership', 'handle_direktt_activate_membership' );
-add_action( 'wp_ajax_nopriv_direktt_activate_membership', 'handle_direktt_activate_membership' );
+add_action( 'wp_ajax_direktt_activate_membership', 'direktt_membership_handle_direktt_activate_membership' );
+add_action( 'wp_ajax_nopriv_direktt_activate_membership', 'direktt_membership_handle_direktt_activate_membership' );
 
 // Invalidate Membership AJAX Handler
-add_action( 'wp_ajax_direktt_invalidate_membership', 'handle_direktt_invalidate_membership' );
-add_action( 'wp_ajax_nopriv_direktt_invalidate_membership', 'handle_direktt_invalidate_membership' );
+add_action( 'wp_ajax_direktt_invalidate_membership', 'direktt_membership_handle_direktt_invalidate_membership' );
+add_action( 'wp_ajax_nopriv_direktt_invalidate_membership', 'direktt_membership_handle_direktt_invalidate_membership' );
 
 // Record Membership Usage AJAX Handler
-add_action( 'wp_ajax_direktt_record_membership_usage', 'handle_direktt_record_membership_usage' );
-add_action( 'wp_ajax_nopriv_direktt_record_membership_usage', 'handle_direktt_record_membership_usage' );
+add_action( 'wp_ajax_direktt_record_membership_usage', 'direktt_membership_handle_direktt_record_membership_usage' );
+add_action( 'wp_ajax_nopriv_direktt_record_membership_usage', 'direktt_membership_handle_direktt_record_membership_usage' );
 
 // User tool shortcode
 add_shortcode( 'direktt_membership_tool', 'direktt_membership_tool_shortcode' );
@@ -790,7 +790,7 @@ function direktt_membership_packages_render_custom_box( $post ) {
 	<?php
 }
 
-function handle_direktt_membership_get_issued_report() {
+function direktt_membership_handle_direktt_membership_get_issued_report() {
     if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_membership_reports' ) ) {
         wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-membership' ) );
         wp_die();
@@ -919,7 +919,7 @@ function handle_direktt_membership_get_issued_report() {
     wp_die();
 }
 
-function handle_direktt_membership_get_used_report() {
+function direktt_membership_handle_direktt_membership_get_used_report() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_membership_reports' ) ) {
 		wp_send_json_error( esc_html__( 'Invalid nonce.', 'direktt-membership' ) );
 		wp_die();
@@ -1041,7 +1041,7 @@ function handle_direktt_membership_get_used_report() {
 	wp_die();
 }
 
-function save_direktt_membership_package_meta( $post_id ) {
+function direktt_membership_save_package_meta( $post_id ) {
 
 	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 		return;
@@ -1159,7 +1159,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 
 		<div id="direktt-membership-packages-all">
 			<?php
-			$all_memberships = direktt_get_all_user_memberships( sanitize_text_field( $subscription_id ) );
+			$all_memberships = direktt_membership_get_all_user_packages( sanitize_text_field( $subscription_id ) );
 			if ( empty( $all_memberships ) ) {
 				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
 			} else {
@@ -1242,7 +1242,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 
 		<div id="direktt-membership-packages-active" style="display: none;">
 			<?php
-			$active_memberships = direktt_get_active_user_memberships( $subscription_id );
+			$active_memberships = direktt_membership_get_active_user_packages( $subscription_id );
 			if ( empty( $active_memberships ) ) {
 				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
 			} else {
@@ -1468,7 +1468,7 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 	echo '</div>';
 }
 
-function handle_direktt_assign_membership_package() {
+function direktt_membership_handle_direktt_assign_membership_package() {
 	if ( isset( $_POST['nonce'], $_POST['package_id'], $_POST['assigner_id'], $_POST['reciever_id'] ) ) {
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_assign_membership_package_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
@@ -1553,7 +1553,7 @@ function handle_direktt_assign_membership_package() {
 	}
 }
 
-function direktt_get_all_user_memberships( $subscription_id ) {
+function direktt_membership_get_all_user_packages( $subscription_id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
@@ -1594,7 +1594,7 @@ function direktt_get_all_user_memberships( $subscription_id ) {
 	return $membership_data;
 }
 
-function direktt_get_active_user_memberships( $subscription_id ) {
+function direktt_membership_get_active_user_packages( $subscription_id ) {
 	global $wpdb;
 	$issued_table = $wpdb->prefix . 'direktt_membership_issued';
 
@@ -2037,7 +2037,7 @@ function direktt_membership_render_view_details( $id ) {
 	}
 }
 
-function handle_direktt_activate_membership() {
+function direktt_membership_handle_direktt_activate_membership() {
 	if ( isset( $_POST['nonce'], $_POST['issued_id'] ) ) {
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_activate_membership_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
@@ -2137,7 +2137,7 @@ function handle_direktt_activate_membership() {
 	}
 }
 
-function handle_direktt_invalidate_membership() {
+function direktt_membership_handle_direktt_invalidate_membership() {
 	if ( isset( $_POST['nonce'], $_POST['issued_id'] ) ) {
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_invalidate_membership_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
@@ -2193,7 +2193,7 @@ function handle_direktt_invalidate_membership() {
 	}
 }
 
-function handle_direktt_record_membership_usage() {
+function direktt_membership_handle_direktt_record_membership_usage() {
 	if ( isset( $_POST['nonce'], $_POST['issued_id'], $_POST['subscription_id'] ) ) {
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'direktt_record_membership_usage_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security check failed.', 'direktt-membership' ) );
