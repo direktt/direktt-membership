@@ -1363,7 +1363,7 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 	if ( empty( $membership_packages ) ) {
 		echo '<div class="notice notice-error"><p>' . esc_html__( 'There are no existing membership packages.', 'direktt-membership' ) . '</p></div>';
 	} else {
-		echo '<table class="direktt-membership-packages-table"><thead><tr>';
+		echo '<table class="direktt-membership-packages-table form-table"><thead><tr>';
 		echo '<th><strong>' . esc_html__( 'Name', 'direktt-membership' ) . '</strong></th>';
 		echo '<th>' . esc_html__( 'Type', 'direktt-membership' ) . '</th>';
 		echo '<th>' . esc_html__( 'Validity', 'direktt-membership' ) . '</th>';
