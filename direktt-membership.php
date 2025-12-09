@@ -1143,15 +1143,16 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 			'all'    => esc_html__( 'All', 'direktt-membership' ),
 			'active' => esc_html__( 'Active', 'direktt-membership' ),
 		);
+		$all_memberships = direktt_membership_get_all_user_packages( sanitize_text_field( $subscription_id ) );
+		$active_memberships = direktt_membership_get_active_user_packages( $subscription_id );
 		?>
-		<div class="direktt-membership-filter-wrapper">
+		<div class="direktt-membership-filter-wrapper" style="display: <?php echo empty( $all_memberships ) || empty( $active_memberships ) ? 'none' : 'block'; ?>;">
 			<input type="checkbox" name="direktt-membership-filter" id="direktt-membership-filter">
 			<label for="direktt-membership-filter"><?php echo esc_html__( 'Show only active', 'direktt-membership' ); ?></label>
 		</div>
 
 		<div id="direktt-membership-packages-all">
 			<?php
-			$all_memberships = direktt_membership_get_all_user_packages( sanitize_text_field( $subscription_id ) );
 			if ( empty( $all_memberships ) ) {
 				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
 			} else {
@@ -1240,9 +1241,8 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 
 		<div id="direktt-membership-packages-active" style="display: none;">
 			<?php
-			$active_memberships = direktt_membership_get_active_user_packages( $subscription_id );
 			if ( empty( $active_memberships ) ) {
-				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
+				echo '<div class="notice notice-error"><p>' . esc_html__( 'No active memberships found.', 'direktt-membership' ) . '</p></div>';
 			} else {
 				?>
 				<table>
