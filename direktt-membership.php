@@ -744,7 +744,7 @@ function direktt_membership_packages_render_custom_box( $post ) {
 	wp_nonce_field( 'direktt_membership_save', 'direktt_membership_nonce' );
 	?>
 
-	<table class="direktt-profile-data-membership-tool-table">
+	<table class="direktt-profile-data-membership-tool-table form-table">
 		<tr>
 			<th scope="row"><label for="direktt_membership_package_type"><?php echo esc_html__( 'Package Type', 'direktt-membership' ); ?></label></th>
 			<td>
@@ -752,8 +752,10 @@ function direktt_membership_packages_render_custom_box( $post ) {
 					<option value="0" <?php selected( $type, '0' ); ?>><?php echo esc_html__( 'Time Based', 'direktt-membership' ); ?></option>
 					<option value="1" <?php selected( $type, '1' ); ?>><?php echo esc_html__( 'Usage Based', 'direktt-membership' ); ?></option>
 				</select>
-				<p class="description"><?php echo esc_html__( 'Time based - Duration of access is based on time (e.g., 30 days)', 'direktt-membership' ); ?></p>
-				<p class="description"><?php echo esc_html__( 'Usage based - Duration of access is based on usage (e.g., 10 uses)', 'direktt-membership' ); ?></p>
+				<p class="description">
+					<?php echo wp_kses( '<b>Time-based:</b> Access lasts for a set time (e.g., 30 days)', 'direktt-membership' ); ?><br/>
+					<?php echo wp_kses( '<b>Usage-based:</b> Access lasts for a set number of uses (e.g., 10 uses)', 'direktt-membership' ); ?>
+				</p>
 			</td>
 		</tr>
 		<tr id="direktt_membership_package_max_usage_row">
@@ -767,7 +769,7 @@ function direktt_membership_packages_render_custom_box( $post ) {
 			<th scope="row"><label for="direktt_membership_package_validity"><?php echo esc_html__( 'Validity (days)', 'direktt-membership' ); ?></label></th>
 			<td>
 				<input type="number" name="direktt_membership_package_validity" id="direktt_membership_package_validity" value="<?php echo esc_attr( $validity ); ?>" min="0" />
-				<p class="description"><?php echo esc_html__( 'Number of days the membership is valid after activation (0 - unlimited).', 'direktt-membership' ); ?></p>
+				<p class="description"><?php echo esc_html__( 'Number of days the membership is valid after activation (0 means unlimited).', 'direktt-membership' ); ?></p>
 			</td>
 		</tr>
 	</table>
