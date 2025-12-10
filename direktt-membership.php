@@ -1148,7 +1148,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 		$all_memberships = direktt_membership_get_all_user_packages( sanitize_text_field( $subscription_id ) );
 		$active_memberships = direktt_membership_get_active_user_packages( $subscription_id );
 		?>
-		<div class="direktt-membership-filter-wrapper" style="display: <?php echo empty( $all_memberships ) || empty( $active_memberships ) ? 'none' : 'block'; ?>;">
+		<div class="direktt-membership-filter-wrapper" style="display: <?php echo empty( $all_memberships ) || empty( $active_memberships ) ? 'none' : 'flex'; ?>;">
 			<input type="checkbox" name="direktt-membership-filter" id="direktt-membership-filter">
 			<label for="direktt-membership-filter"><?php echo esc_html__( 'Show only active', 'direktt-membership' ); ?></label>
 		</div>
@@ -1165,7 +1165,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 							<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 						</tr>
 					</thead>
