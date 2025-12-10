@@ -759,7 +759,7 @@ function direktt_membership_packages_render_custom_box( $post ) {
 			</td>
 		</tr>
 		<tr id="direktt_membership_package_max_usage_row">
-			<th scope="row"><label for="direktt_membership_package_max_usage"><?php echo esc_html__( 'Max Usage', 'direktt-membership' ); ?></label></th>
+			<th scope="row"><label for="direktt_membership_package_max_usage"><?php echo esc_html__( 'Max', 'direktt-membership' ); ?></label></th>
 			<td>
 				<input type="number" name="direktt_membership_package_max_usage" id="direktt_membership_package_max_usage" value="<?php echo esc_attr( $max_usage ); ?>" min="0" />
 				<p class="description"><?php echo esc_html__( 'Number of times the membership can be used (0 - unlimited).', 'direktt-membership' ); ?></p>
@@ -864,7 +864,7 @@ function direktt_membership_handle_direktt_membership_get_issued_report() {
 		'Time of Issue',
 		'Time of Activation',
 		'Expires on',
-		'Usages left',
+		'Left',
 		'Valid',
 	);
 
@@ -1159,7 +1159,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 				echo '<div class="notice notice-error"><p>' . esc_html__( 'No memberships found.', 'direktt-membership' ) . '</p></div>';
 			} else {
 				?>
-				<table>
+				<table  class="direktt-profile-data-membership-tool-table form-table">
 					<thead>
 						<tr>
 							<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
@@ -1253,7 +1253,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 							<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 						</tr>
 					</thead>
@@ -1373,7 +1373,7 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 		echo '<th><strong>' . esc_html__( 'Name', 'direktt-membership' ) . '</strong></th>';
 		echo '<th>' . esc_html__( 'Type', 'direktt-membership' ) . '</th>';
 		echo '<th>' . esc_html__( 'Validity', 'direktt-membership' ) . '</th>';
-		echo '<th>' . esc_html__( 'Max Usage', 'direktt-membership' ) . '</th>';
+		echo '<th>' . esc_html__( 'Max', 'direktt-membership' ) . '</th>';
 		echo '</tr></thead><tbody>';
 
 		foreach ( $membership_packages as $package ) {
@@ -1875,7 +1875,7 @@ function direktt_membership_render_view_details( $id ) {
 				<thead>
 					<tr>
 						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 					</tr>
 				</thead>
@@ -2523,7 +2523,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 				<thead>
 					<tr>
 						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Usages left', 'direktt-membership' ); ?></th>
+						<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 					</tr>
 				</thead>
