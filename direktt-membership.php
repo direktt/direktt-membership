@@ -1129,7 +1129,7 @@ function direktt_membership_render_profile_tool() {
 	if ( isset( $_GET['action'] ) && $_GET['action'] === 'view_details' ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, action based router for content rendering.
 		direktt_membership_render_view_details( isset( $_GET['id'] ) ? sanitize_text_field( wp_unslash( $_GET['id'] ) ) : '' ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
 		$back_url = remove_query_arg( array( 'action', 'id', 'success_flag_activate', 'success_flag_invalidate', 'success_flag_record_usage' ) );
-		echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
+		echo ' <a href="' . esc_url( $back_url ) . '" class="button button-invert button-dark-gray button-center">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
 		return;
 	}
 	direktt_membership_render_assign_membership_packages( isset( $_GET['subscriptionId'] ) ? sanitize_text_field( wp_unslash( $_GET['subscriptionId'] ) ) : '' ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Justification: not a form processing, used for content rendering.
@@ -2644,7 +2644,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 	}
 
 	$back_url = remove_query_arg( array( 'action', 'id' ) );
-	echo ' <a href="' . esc_url( $back_url ) . '" class="button">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
+	echo ' <a href="' . esc_url( $back_url ) . '" class="button button-invert button-dark-gray button-center">' . esc_html__( 'Back to Memberships', 'direktt-membership' ) . '</a>';
 	echo '</div>';
 	echo '</div>';
 	echo '</div>';
