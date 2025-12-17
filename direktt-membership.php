@@ -885,7 +885,7 @@ function direktt_membership_handle_direktt_membership_get_issued_report() {
 				$usages_left = $max_usage - $used_count;
 			}
 		} else {
-			$usages_left = '/';
+			$usages_left = '-';
 		}
 		$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
 
@@ -895,9 +895,9 @@ function direktt_membership_handle_direktt_membership_get_issued_report() {
 			$reciever_name,
 			$membership->activated === 1 ? 'true' : 'false',
 			$membership->issue_time,
-			$membership->activation_time ?? '/',
-			$membership->expiry_time ?? '/',
-			$usages_left ?? '/',
+			$membership->activation_time ?? '-',
+			$membership->expiry_time ?? '-',
+			$usages_left ?? '-',
 			$membership->valid === 1 ? 'true' : 'false',
 		);
 
@@ -1163,10 +1163,10 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 					<thead>
 						<tr>
 							<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Type', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1181,12 +1181,17 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 								$max_usage = 0;
 							}
 
+							if ( $membership['valid'] === 0 ) {
+								continue;
+							}
+
 							$used_count  = direktt_membership_get_used_count( $membership['issued_id'] );
 							$usages_left = $max_usage === 0 ? esc_html__( 'Unlimited', 'direktt-membership' ) : max( 0, $max_usage - $used_count );
 							$expired     = $membership['expiry_time'] && ( strtotime( $membership['expiry_time'] ) < strtotime( current_time( 'mysql' ) ) );
 							?>
 							<tr class="<?php echo $membership['activated'] ? esc_attr( 'direktt-membership-package-active-yes' ) : esc_attr( 'direktt-membership-package-active-no' ); ?> <?php echo $expired ? esc_attr( 'direktt-membership-package-expired' ) : ''; ?>">
-								<td><?php echo esc_html( $package_name ); ?><br><i><?php echo esc_html( human_time_diff( strtotime( $membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+								<td><strong><?php echo esc_html( $package_name ); ?></strong><br><i><?php echo esc_html( human_time_diff( strtotime( $membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+								<td><?php echo $type === '0' ? esc_html__( 'Time', 'direktt-membership' ) : esc_html__( 'Usage', 'direktt-membership' ); ?></td>
 								<td>
 									<?php
 									if ( $membership['activation_time'] ) {
@@ -1194,7 +1199,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 										$current_time    = strtotime( current_time( 'mysql' ) );
 										echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 									} else {
-										echo esc_html( '/' );
+										echo esc_html( '-' );
 									}
 									?>
 								</td>
@@ -1210,12 +1215,11 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 											echo esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 										}
 									} else {
-										echo esc_html( '/' );
+										echo esc_html( '-' );
 									}
 									?>
 								</td>
-								<td><?php echo $type === '1' ? esc_html( $usages_left ) : esc_html( '/' ); ?></td>
-								<td><?php echo $membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+								<td><?php echo $type === '1' ? esc_html( $usages_left ) : esc_html( '-' ); ?></td>
 							</tr>
 							<tr>
 								<td colspan="5">
@@ -1252,10 +1256,10 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 					<thead>
 						<tr>
 							<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
+							<th><?php echo esc_html__( 'Type', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
 							<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
-							<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1265,9 +1269,14 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 							$package_name = esc_html( get_the_title( $package_id ) );
 							$type         = get_post_meta( $package_id, 'direktt_membership_package_type', true );
 							$max_usage    = get_post_meta( $package_id, 'direktt_membership_package_max_usage', true );
+							$valid        = $active_membership['valid'];
 
 							if ( ! $max_usage ) {
 								$max_usage = 0;
+							}
+
+							if ( $active_membership['valid'] === 0 ) {
+								continue;
 							}
 
 							$used_count  = direktt_membership_get_used_count( $active_membership['issued_id'] );
@@ -1275,7 +1284,8 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 							$expired     = $active_membership['expiry_time'] && ( strtotime( $active_membership['expiry_time'] ) < strtotime( current_time( 'mysql' ) ) );
 							?>
 							<tr class="direktt-membership-package-active-yes <?php echo $expired ? esc_attr( 'direktt-membership-package-expired' ) : ''; ?>">
-								<td><?php echo esc_html( $package_name ); ?><br><i><?php echo esc_html( human_time_diff( strtotime( $active_membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+								<td><strong><?php echo esc_html( $package_name ); ?></strong><br><i><?php echo esc_html( human_time_diff( strtotime( $active_membership['issue_time'] ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+								<td><?php echo $type === '0' ? esc_html__( 'Time', 'direktt-membership' ) : esc_html__( 'Usage', 'direktt-membership' ); ?></td>
 								<td>
 									<?php
 									if ( $active_membership['activation_time'] ) {
@@ -1283,7 +1293,7 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 										$current_time    = strtotime( current_time( 'mysql' ) );
 										echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 									} else {
-										echo esc_html( '/' );
+										echo esc_html( '-' );
 									}
 									?>
 								</td>
@@ -1299,12 +1309,11 @@ function direktt_membership_render_membership_packages( $subscription_id ) {
 											echo esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 										}
 									} else {
-										echo esc_html( '/' );
+										echo esc_html( '-' );
 									}
 									?>
 								</td>
-								<td><?php echo $type === '1' ? esc_html( $usages_left ) : esc_html( '/' ); ?></td>
-								<td><?php echo $active_membership['valid'] ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
+								<td><?php echo $type === '1' ? esc_html( $usages_left ) : esc_html( '-' ); ?></td>
 							</tr>
 							<tr>
 								<td colspan="5">
@@ -1375,7 +1384,6 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 		echo '<th><strong>' . esc_html__( 'Name', 'direktt-membership' ) . '</strong></th>';
 		echo '<th>' . esc_html__( 'Type', 'direktt-membership' ) . '</th>';
 		echo '<th>' . esc_html__( 'Validity', 'direktt-membership' ) . '</th>';
-		echo '<th>' . esc_html__( 'Max', 'direktt-membership' ) . '</th>';
 		echo '</tr></thead><tbody>';
 
 		foreach ( $membership_packages as $package ) {
@@ -1398,9 +1406,8 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 
 			echo '<tr>';
 				echo '<td class="direktt-membership-package-name"><strong>' . esc_html( $package_name ) . '</strong></td>';
-				echo '<td class="direktt-membership-package-type">' . ( $type === '0' ? esc_html__( 'Time Based', 'direktt-membership' ) : esc_html__( 'Usage Based', 'direktt-membership' ) ) . '</td>';
-				echo '<td class="direktt-membership-package-validity">' . ( $type === '0' ? esc_html( $validity ) . esc_html__( ' day(s)', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
-				echo '<td class="direktt-membership-package-max-usage">' . ( $type === '1' ? esc_html( $max_usage ) . esc_html__( ' usage(s)', 'direktt-membership' ) : esc_html( '/' ) ) . '</td>';
+				echo '<td class="direktt-membership-package-type">' . ( $type === '0' ? esc_html__( 'Time', 'direktt-membership' ) : esc_html__( 'Usage', 'direktt-membership' ) ) . '</td>';
+				echo '<td class="direktt-membership-package-validity">' . ( $type === '0' ? esc_html( $validity ) . esc_html__( ' day(s)', 'direktt-membership' ) : esc_html( $max_usage ) . esc_html__( ' usage(s)', 'direktt-membership' ) ) . '</td>';
 			echo '</tr>';
 			echo '<tr class="direktt-membership-actions">';
 				echo '<td colspan="4">';
@@ -1565,7 +1572,7 @@ function direktt_membership_get_all_user_packages( $subscription_id ) {
 
 	$memberships = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->prepare(
-			"SELECT * FROM $issued_table WHERE direktt_reciever_user_id = %s ORDER BY valid DESC, activated DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT * FROM $issued_table WHERE direktt_reciever_user_id = %s AND valid = 1 ORDER BY activated DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			// Justifications for phpcs ignores:
 			// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string.
 			// WordPress.DB.DirectDatabaseQuery.DirectQuery: Direct query is necessary because we're fetching data from a custom plugin table; $wpdb->get_results() is the official WordPress method for this.
@@ -1691,12 +1698,11 @@ function direktt_membership_render_view_details( $id ) {
 						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr class="<?php echo $membership->activated ? esc_attr( 'direktt-membership-package-active-yes' ) : esc_attr( 'direktt-membership-package-active-no' ); ?>">
-						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+						<td><strong><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></strong><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
 						<td>
 							<?php
 							if ( $membership->activation_time ) {
@@ -1704,7 +1710,7 @@ function direktt_membership_render_view_details( $id ) {
 								$current_time    = strtotime( current_time( 'mysql' ) );
 								echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 							} else {
-								echo esc_html( '/' );
+								echo esc_html( '-' );
 							}
 							?>
 						</td>
@@ -1720,11 +1726,10 @@ function direktt_membership_render_view_details( $id ) {
 									echo esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 								}
 							} else {
-								echo esc_html( '/' );
+								echo esc_html( '-' );
 							}
 							?>
 						</td>
-						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
 						<td colspan="4">
@@ -1878,12 +1883,11 @@ function direktt_membership_render_view_details( $id ) {
 					<tr>
 						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr>
-						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+						<td><strong><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></strong><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
 						<td>
 							<?php
 							$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
@@ -1900,7 +1904,6 @@ function direktt_membership_render_view_details( $id ) {
 							}
 							?>
 						</td>
-						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
 						<td colspan="3">
@@ -2388,12 +2391,11 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Activated', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Expires', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr class="<?php echo $membership->activated ? esc_attr( 'direktt-membership-package-active-yes' ) : esc_attr( 'direktt-membership-package-active-no' ); ?>">
-						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+						<td><strong><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></strong><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
 						<td>
 							<?php
 							if ( $membership->activation_time ) {
@@ -2401,7 +2403,7 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 								$current_time    = strtotime( current_time( 'mysql' ) );
 								echo esc_html( human_time_diff( $activation_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 							} else {
-								echo esc_html( '/' );
+								echo esc_html( '-' );
 							}
 							?>
 						</td>
@@ -2417,11 +2419,10 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 									echo esc_html( human_time_diff( $expiry_time, $current_time ) ) . esc_html__( ' ago', 'direktt-membership' );
 								}
 							} else {
-								echo esc_html( '/' );
+								echo esc_html( '-' );
 							}
 							?>
 						</td>
-						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
 						<td colspan="4">
@@ -2526,12 +2527,11 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 					<tr>
 						<th><?php echo esc_html__( 'Name', 'direktt-membership' ); ?></th>
 						<th><?php echo esc_html__( 'Left', 'direktt-membership' ); ?></th>
-						<th><?php echo esc_html__( 'Valid', 'direktt-membership' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr>
-						<td><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
+						<td><strong><?php echo esc_html( get_the_title( intval( $membership->membership_package_id ) ) ); ?></strong><br><i><?php echo esc_html( human_time_diff( strtotime( $membership->issue_time ) ) ) . esc_html__( ' ago', 'direktt-membership' ); ?></i></td>
 						<td>
 							<?php
 							$max_usage = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_max_usage', true );
@@ -2548,7 +2548,6 @@ function direktt_membership_render_view_details_shortcode( $id ) {
 							}
 							?>
 						</td>
-						<td><?php echo $membership->valid ? esc_html__( 'Yes', 'direktt-membership' ) : esc_html__( 'No', 'direktt-membership' ); ?></td>
 					</tr>
 					<tr>
 						<td colspan="3">
