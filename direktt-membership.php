@@ -746,7 +746,7 @@ function direktt_membership_packages_render_custom_box( $post ) {
 
 	<table class="direktt-profile-data-membership-tool-table form-table">
 		<tr>
-			<th scope="row"><label for="direktt_membership_package_type"><?php echo esc_html__( 'Package Type', 'direktt-membership' ); ?></label></th>
+			<th scope="row"><label for="direktt_membership_package_type"><?php echo esc_html__( 'Type', 'direktt-membership' ); ?></label></th>
 			<td>
 				<select name="direktt_membership_package_type" id="direktt_membership_package_type">
 					<option value="0" <?php selected( $type, '0' ); ?>><?php echo esc_html__( 'Time Based', 'direktt-membership' ); ?></option>
@@ -2751,4 +2751,51 @@ function direktt_membership_highlight_submenu( $parent_file ) {
 	}
 
 	return $parent_file;
+}
+
+add_filter( 'manage_direkttmpackages_posts_columns', 'direktt_membership_add_type_cpt_column' );
+
+function direktt_membership_add_type_cpt_column( $columns ) {
+	$new_columns = array();
+	foreach ( $columns as $key => $value ) {
+		$new_columns[ $key ] = $value;
+		if ( 'title' === $key ) {
+			$new_columns['membership_package_type'] = esc_html__( 'Type', 'direktt-membership' );
+		}
+	}
+	return $new_columns;
+}
+
+add_action( 'manage_direkttmpackages_posts_custom_column', 'direktt_membership_display_type_cpt_column', 10, 2 );
+
+function direktt_membership_display_type_cpt_column( $column, $post_id ) {
+	if ( $column === 'membership_package_type' ) {
+		$membership_package_type = get_post_meta( $post_id, 'direktt_membership_package_type', true );
+
+		if ( isset( $membership_package_type ) ) {
+			echo $membership_package_type === '0' ? esc_html__( 'Time Based', 'direktt-membership' ) : esc_html__( 'Usage Based', 'direktt-membership' );
+		} else {
+			echo esc_html__( 'No type assigned', 'direktt-membership' );
+		}
+	}
+}
+
+add_filter( 'manage_edit-direkttmpackages_sortable_columns', 'direktt_membership_type_column_make_sortable' );
+
+function direktt_membership_type_column_make_sortable( $columns ) {
+	$columns['membership_package_type'] = 'membership_package_type';
+	return $columns;
+}
+
+add_action( 'pre_get_posts', 'direktt_membership_sort_type_column' );
+
+function direktt_membership_sort_type_column( $query ) {
+	if ( ! is_admin() ) {
+		return;
+	}
+
+	if ( 'membership_package_type' === $query->get( 'orderby' ) ) {
+		$query->set( 'meta_key', 'direktt_membership_package_type' );
+		$query->set( 'orderby', 'meta_value' );
+	}
 }
