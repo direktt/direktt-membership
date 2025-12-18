@@ -160,7 +160,7 @@ function direktt_membership_create_issued_database_table() {
 
 	dbDelta( $sql );
 
-	$wpdb->query( $wpdb->prepare( "ALTER TABLE $table_name MODIFY COLUMN issue_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+	$wpdb->query( "ALTER TABLE $table_name MODIFY COLUMN issue_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 
 	// Justifications for phpcs ignores:
 	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $table_name is built from $wpdb->prefix + literal string.
@@ -190,7 +190,7 @@ function direktt_membership_create_used_database_table() {
 	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 	dbDelta( $sql );
 
-	$wpdb->query( $wpdb->prepare( "ALTER TABLE $table_name MODIFY COLUMN usage_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+	$wpdb->query( "ALTER TABLE $table_name MODIFY COLUMN usage_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 
 	// Justifications for phpcs ignores:
 	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $table_name is built from $wpdb->prefix + literal string.
