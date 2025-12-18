@@ -832,7 +832,7 @@ function direktt_membership_handle_direktt_membership_get_issued_report() {
 	}
 
 	// Get issued memberships.
-	$memberships = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $issued_table WHERE $where" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$memberships = $wpdb->get_results( "SELECT * FROM $issued_table WHERE $where" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 	// Justifications for phpcs ignores:
 	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $issued_table is built from $wpdb->prefix + literal string, $where is built from literal string + sanitized inputs.
@@ -954,7 +954,7 @@ function direktt_membership_handle_direktt_membership_get_used_report() {
 		$date_condition = $wpdb->prepare( 'usage_time BETWEEN %s AND %s', $from, $to );
 	}
 
-	$usages = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $used_table WHERE $date_condition" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$usages = $wpdb->get_results( "SELECT * FROM $used_table WHERE $date_condition" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 	// Justifications for phpcs ignores:
 	// WordPress.DB.PreparedSQL.InterpolatedNotPrepared: $used_table is built from $wpdb->prefix + literal string, $date_condition is built from literal string + sanitized inputs.
