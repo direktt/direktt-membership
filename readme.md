@@ -102,14 +102,59 @@ Using this shortcode, you can display all the currently active personal Membersh
 
 Using this shortcode, you can display the validation interface to salespersons. The interface will be automatically displayed upon Membership QR Code scan showing all relevant properties of the issued package
 
+### User Profile Tool 
+
+The Membership tool is available inside a subscriber’s profile in the Direktt mobile app. It enables staff to issue packages and manage existing memberships for that subscriber.
+
 ## Notification Templates
 
-Direktt Message templates support following dynamic placeholders:
+Membership notifications use Direktt Message Templates. Depending on the event (issuance, activation, usage) and recipient (subscriber/admin), the plugin can populate templates with dynamic placeholders.
 
-- `#display_name#` - display name of the subscriber
-- `#subscription_id#` - subscription id of the subscriber
-  
-- TODO
+### Membership Issuance
+
+**Subscriber template placeholders**
+
+- `#package_name#` - membership package name
+- `#timestamp#` - time of issue
+
+**Admin template placeholders**
+
+- `#package_name#` - membership package name
+- `#timestamp#` - time of issue
+- `#receiver_display_name#` - display name of the user to whom the package was issued
+- `#issuer_display_name#` - display name of the user who issued the package
+
+### Membership Activation
+
+**Subscriber template placeholders**
+
+- `#package_name#` - membership package name
+- `#timestamp_activated#` - time of activation
+- `#timestamp_expiry#` - time of expiry
+
+**Admin template placeholders**
+
+- `#package_name#` - membership package name
+- `#timestamp_activated#` - time of activation
+- `#timestamp_expiry#` - time of expiry
+- `#receiver_display_name#` - display name of the user whose package was activated
+- `#activator_display_name#` - display name of the user who activated the package
+
+### Membership Usage
+
+**Subscriber template placeholders**
+
+- `#package_name#` - membership package name
+- `#timestamp#` - time of usage
+- `#usages_left#` - number of usages left
+
+**Admin template placeholders**
+
+- `#package_name#` - membership package name
+- `#timestamp#` - time of usage
+- `#usages_left#` - number of usages left
+- `#receiver_display_name#` - display name of the user whose package was used
+- `#validator_display_name#` - display name of the user who recorded the usage
 
 ## Usage Logs
 
