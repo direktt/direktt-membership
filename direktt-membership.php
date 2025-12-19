@@ -1409,7 +1409,7 @@ function direktt_membership_render_assign_membership_packages( $reciever_id ) {
 			echo '<tr>';
 				echo '<td class="direktt-membership-package-name"><strong>' . esc_html( $package_name ) . '</strong></td>';
 				echo '<td class="direktt-membership-package-type">' . ( $type === '0' ? esc_html__( 'Time', 'direktt-membership' ) : esc_html__( 'Usage', 'direktt-membership' ) ) . '</td>';
-				echo '<td class="direktt-membership-package-validity">' . ( $type === '0' ? esc_html( $validity ) . esc_html__( ' day(s)', 'direktt-membership' ) : esc_html( $max_usage ) . esc_html__( ' usage(s)', 'direktt-membership' ) ) . '</td>';
+				echo '<td class="direktt-membership-package-validity">' . ( $type === '0' ? ( $validity > 0 ? esc_html( $validity ) . esc_html__( ' day(s)', 'direktt-membership' ) : esc_html__( 'Unlimited', 'direktt-membership' ) ) : ( $max_usage > 0 ? esc_html( $max_usage ) . esc_html__( ' usage(s)', 'direktt-membership' ) : esc_html__( 'Unlimited', 'direktt-membership' ) ) ) . '</td>';
 			echo '</tr>';
 			echo '<tr class="direktt-membership-actions">';
 				echo '<td colspan="4">';
@@ -1780,6 +1780,7 @@ function direktt_membership_render_view_details( $id ) {
 								<div class="notice notice-error"><p><?php echo esc_html__( 'This membership is invalidated.', 'direktt-membership' ); ?></p></div>
 								<?php
 							} else {
+								$validity = get_post_meta( intval( $membership->membership_package_id ), 'direktt_membership_package_validity', true );
 								if ( ! $membership->activated ) {
 									?>
 									<button class="button" id="direktt-membership-activate"><?php echo esc_html__( 'Activate Membership', 'direktt-membership' ); ?> </button>
@@ -1840,15 +1841,14 @@ function direktt_membership_render_view_details( $id ) {
 									});
 									</script>
 									<?php
-								} elseif ( strtotime( $membership->expiry_time ) < strtotime( current_time( 'mysql' ) ) ) {
+								} elseif ( $validity !== '0' && strtotime( $membership->expiry_time ) < strtotime( current_time( 'mysql' ) ) ) {
 									?>
-										<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has expired.', 'direktt-membership' ); ?></p></div>
-										<?php
+									<div class="notice notice-error"><p><?php echo esc_html__( 'This membership has expired.', 'direktt-membership' ); ?></p></div>
+									<?php
 								} else {
 									?>
-										<div class="notice"><p><?php echo esc_html__( 'This membership is currently active.', 'direktt-membership' ); ?></p></div>
-										<?php
-
+									<div class="notice"><p><?php echo esc_html__( 'This membership is currently active.', 'direktt-membership' ); ?></p></div>
+									<?php
 								}
 								?>
 								<button class="button button-red button" id="direktt-membership-invalidate"><?php echo esc_html__( 'Invalidate Membership', 'direktt-membership' ); ?> </button>
@@ -2126,7 +2126,11 @@ function direktt_membership_handle_direktt_activate_membership() {
 
 		$activation_time = current_time( 'mysql' );
 		$validity        = intval( get_post_meta( $package_id, 'direktt_membership_package_validity', true ) );
-		$expiry_time     = $validity > 0 ? gmdate( 'Y-m-d H:i:s', strtotime( $activation_time . ' + ' . $validity . ' days' ) ) : null;
+		if ( $validity === 0 ) {
+			$expiry_time     = 'never';
+		} else {
+			$expiry_time     = $validity > 0 ? gmdate( 'Y-m-d H:i:s', strtotime( $activation_time . ' + ' . $validity . ' days' ) ) : null;
+		}
 		$updated         = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 			// Justifications for phpcs ignores:
