@@ -2126,11 +2126,7 @@ function direktt_membership_handle_direktt_activate_membership() {
 
 		$activation_time = current_time( 'mysql' );
 		$validity        = intval( get_post_meta( $package_id, 'direktt_membership_package_validity', true ) );
-		if ( $validity === 0 ) {
-			$expiry_time     = 'never';
-		} else {
-			$expiry_time     = $validity > 0 ? gmdate( 'Y-m-d H:i:s', strtotime( $activation_time . ' + ' . $validity . ' days' ) ) : null;
-		}
+		$expiry_time     = $validity > 0 ? gmdate( 'Y-m-d H:i:s', strtotime( $activation_time . ' + ' . $validity . ' days' ) ) : null;
 		$updated         = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 			// Justifications for phpcs ignores:
