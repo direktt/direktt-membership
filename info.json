@@ -9,7 +9,7 @@
 	"tested" : "6.8.3",
 	"requires_php" : "8.0",
 	"homepage" : "https://direktt.com",
-    "last_updated" : "10/22/2025",
+    "last_updated" : "2/4/2026",
 	"sections" : {
 		"description" : "Direktt Membership Addon",
 		"installation" : "Click the Activate button and that's it",
